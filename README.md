@@ -37,11 +37,7 @@ cd client && npm install
 
 ### Configure
 
-Copy `.env.example` to `server/.env` and fill in your keys:
-
-```bash
-cp .env.example server/.env
-```
+Create `server/.env` with your keys:
 
 ```env
 ANTHROPIC_API_KEY=sk-ant-...
@@ -67,45 +63,56 @@ Open [http://localhost:5173](http://localhost:5173)
 ## Prompt Engineering Decisions
 
 ### 1. System Prompt
-The assistant is given a focused travel persona with explicit behavioral rules: be concise, ask clarifying questions when queries are vague, never hallucinate specific prices or visa requirements, and always acknowledge when it's using live data vs. general knowledge.
+Every request includes a focused travel assistant persona with explicit behavioral rules: be concise, ask clarifying questions when queries are vague, never hallucinate specific prices or visa requirements, and always acknowledge when using live data vs. general knowledge.
 
 ### 2. Chain-of-Thought for Destination Recommendations
-When the intent router detects a destination recommendation query, a chain-of-thought prompt is injected guiding Claude to reason step by step: budget → travel season → interests → destination match → why it fits. This produces structured, reasoned recommendations instead of flat lists.
+When the intent router detects a destination recommendation query, a chain-of-thought prompt is injected guiding Claude to reason step by step:
+> Budget → Travel season → Interests → Destination shortlist → Top pick with reasoning
+
+This produces structured, reasoned recommendations instead of generic flat lists.
 
 ### 3. Data Injection
-When external APIs are called, results are injected into the prompt as a clearly labeled context block:
+When external APIs are called, results are injected into the system prompt as a clearly labeled context block:
 ```
-[Live Data]
-Weather in Tokyo: 22°C, partly cloudy, humidity 68%
+[Live Data — OpenWeatherMap]
+City: Tokyo, JP
+Temperature: 22°C (feels like 21°C)
+Conditions: partly cloudy
 Use this real-time data to inform your response.
 ```
-This pattern keeps the LLM grounded and prevents it from contradicting live data with training knowledge.
+This grounds the LLM in real data and prevents it from contradicting live conditions with stale training knowledge.
 
 ### 4. Intent Router — When to use external data vs. LLM knowledge
-Rule-based keyword classifier decides per message:
+Rule-based keyword classifier runs on every message before the LLM is called:
 
 | Pattern | Action |
 |---|---|
-| "weather in X", "temperature in X" | Fetch OpenWeatherMap |
-| "tell me about X country", "what currency in X" | Fetch RestCountries |
-| "best time to visit", "packing list", "what to see" | Claude knowledge only |
-| "recommend a destination" | Claude knowledge + chain-of-thought prompt |
+| "weather in X", "temperature in X", "is it hot in X" | Fetch OpenWeatherMap |
+| "tell me about X", "currency in X", "info on X country" | Fetch RestCountries |
+| "best time to visit", "packing list for X" | Claude knowledge only |
+| "where should I go", "recommend a destination" | Claude knowledge + chain-of-thought |
+| "what to see in X", "local food in X" | Claude knowledge only |
 
-### 5. Supervisor Agent (Phase 3)
-A second Claude call reviews each response before it reaches the user, checking for hallucinations, off-topic answers, and verbosity. If flagged, the response is re-prompted with corrective guidance.
+### 5. Source Transparency
+Every assistant response includes a `sources` badge in the UI showing what powered it — `Claude`, `Claude + OpenWeatherMap`, or `Claude + RestCountries`. Makes the data augmentation decision visible and auditable.
 
-### 6. Source Transparency
-Every assistant response includes a `sources` tag in the UI showing what powered it — `Claude`, `Claude + OpenWeatherMap`, etc. This makes the data augmentation decision visible and auditable.
+### 6. Supervisor Agent *(Phase 3 — coming)*
+A second Claude call will review each response before it reaches the user, checking for hallucinations, off-topic answers, and verbosity. If flagged, the response is re-prompted with corrective guidance.
 
 ---
 
 ## Query Types Supported
 
-- **Destination recommendations** — with chain-of-thought reasoning
-- **Packing advice** — tailored by destination + season
-- **Local attractions** — what to see and do
-- **Live weather** — current conditions via OpenWeatherMap
-- **Country info** — capital, currency, language, region via RestCountries
+| Type | Example | Data Source |
+|---|---|---|
+| Destination recommendations | "Where should I go in Asia on a budget?" | Claude + CoT |
+| Live weather | "What's the weather in Tokyo?" | Claude + OpenWeatherMap |
+| Country info | "Tell me about Japan" | Claude + RestCountries |
+| Packing advice | "What to pack for Iceland in winter?" | Claude |
+| Local attractions | "Best things to do in Barcelona?" | Claude |
+| General travel | "Do I need a visa for Thailand?" | Claude |
+
+---
 
 ## Project Structure
 
@@ -113,19 +120,22 @@ Every assistant response includes a `sources` tag in the UI showing what powered
 travel-assistant/
 ├── server/
 │   └── src/
-│       ├── index.ts              Express app
-│       ├── routes/chat.ts        POST /chat endpoint
-│       ├── session/store.ts      In-memory session store
+│       ├── index.ts                 Express app
+│       ├── routes/chat.ts           POST /chat endpoint
+│       ├── session/store.ts         In-memory session store (15-min TTL on client)
+│       ├── intent/router.ts         Keyword-based intent classifier
+│       ├── context/builder.ts       Assembles prompt + fetches external data
+│       ├── prompts/system.ts        System prompt + chain-of-thought prompt
 │       ├── llm/
-│       │   ├── provider.ts       LLMProvider interface
-│       │   ├── claude.ts         Claude provider (Anthropic SDK)
-│       │   └── factory.ts        Provider factory
+│       │   ├── provider.ts          LLMProvider interface
+│       │   ├── claude.ts            Claude provider (Anthropic SDK)
+│       │   └── factory.ts           Provider factory
 │       └── apis/
-│           ├── weather.ts        OpenWeatherMap client
-│           └── countries.ts      RestCountries client
+│           ├── weather.ts           OpenWeatherMap client
+│           └── countries.ts         RestCountries client
 └── client/
     └── src/
-        ├── App.tsx               Chat UI
-        ├── hooks/useChat.ts      State, localStorage persistence, console logging
-        └── api/client.ts         HTTP client
+        ├── App.tsx                  Chat UI
+        ├── hooks/useChat.ts         State, localStorage persistence, console logging
+        └── api/client.ts            HTTP client
 ```
