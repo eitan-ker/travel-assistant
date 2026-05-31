@@ -67,7 +67,7 @@ Two layers of parallel execution to minimize latency:
 - Response Supervisor receives verified live data sources so it doesn't flag real API data as hallucinations
 - Each supervisor retry injects corrective guidance after the previous bad response
 
-### 5. Response Schema
+### 6. Response Schema
 | Agent | Output | Schema |
 |---|---|---|
 | Travel Agent | Shown to user | Free-form text — natural language |
@@ -75,7 +75,7 @@ Two layers of parallel execution to minimize latency:
 
 Tool use forces structured output — the model cannot deviate from the schema.
 
-### 6. Off-topic Handling
+### 7. Off-topic Handling
 If the user asks about politics, news, or anything unrelated to travel, the system prompt instructs Claude to decline in one professional sentence and redirect — no supervisor needed for this.
 
 ## Setup
