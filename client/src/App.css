@@ -1,0 +1,265 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: #0f1117;
+  color: #e8eaf0;
+  height: 100vh;
+  overflow: hidden;
+}
+
+#root {
+  height: 100vh;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+/* Header */
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  border-bottom: 1px solid #1e2030;
+  background: #13151f;
+  flex-shrink: 0;
+}
+
+.header-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.header-title span {
+  font-size: 22px;
+}
+
+.header-title h1 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #e8eaf0;
+}
+
+.clear-btn {
+  font-size: 13px;
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: 1px solid #2a2d3e;
+  background: transparent;
+  color: #8b8fa8;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.clear-btn:hover:not(:disabled) {
+  border-color: #5c6bc0;
+  color: #e8eaf0;
+}
+
+.clear-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* Chat area */
+.chat-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Empty state */
+.empty-state {
+  margin: auto;
+  text-align: center;
+  max-width: 520px;
+}
+
+.empty-state p {
+  color: #8b8fa8;
+  font-size: 15px;
+  margin-bottom: 20px;
+  line-height: 1.6;
+}
+
+.suggestions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.suggestion {
+  background: #1a1d2e;
+  border: 1px solid #2a2d3e;
+  border-radius: 10px;
+  color: #c5c8da;
+  padding: 12px 16px;
+  font-size: 14px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s;
+}
+
+.suggestion:hover {
+  border-color: #5c6bc0;
+  background: #1e2240;
+  color: #e8eaf0;
+}
+
+/* Messages */
+.message {
+  display: flex;
+}
+
+.message.user {
+  justify-content: flex-end;
+}
+
+.message.assistant {
+  justify-content: flex-start;
+}
+
+.message-body {
+  display: flex;
+  flex-direction: column;
+  max-width: 70%;
+}
+
+.bubble {
+  padding: 12px 16px;
+  border-radius: 14px;
+  font-size: 15px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.message.user .bubble {
+  background: #3949ab;
+  color: #fff;
+  border-bottom-right-radius: 4px;
+}
+
+.message.assistant .bubble {
+  background: #1a1d2e;
+  color: #e8eaf0;
+  border-bottom-left-radius: 4px;
+}
+
+.message.error .bubble {
+  background: #2a1a1a;
+  color: #ef5350;
+  border: 1px solid #4a1a1a;
+}
+
+/* Source badges */
+.sources {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+  padding-left: 2px;
+}
+
+.source-tag {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 20px;
+  background: #1e2240;
+  color: #5c6bc0;
+  border: 1px solid #2a2d5e;
+  font-weight: 500;
+}
+
+/* Typing indicator */
+.bubble.typing {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  padding: 14px 18px;
+}
+
+.bubble.typing span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #5c6bc0;
+  display: inline-block;
+  animation: bounce 1.2s infinite;
+}
+
+.bubble.typing span:nth-child(2) { animation-delay: 0.2s; }
+.bubble.typing span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes bounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
+  30% { transform: translateY(-6px); opacity: 1; }
+}
+
+/* Input area */
+.input-area {
+  display: flex;
+  gap: 10px;
+  padding: 16px 24px;
+  border-top: 1px solid #1e2030;
+  background: #13151f;
+  flex-shrink: 0;
+}
+
+.input-area textarea {
+  flex: 1;
+  background: #1a1d2e;
+  border: 1px solid #2a2d3e;
+  border-radius: 10px;
+  color: #e8eaf0;
+  font-size: 15px;
+  padding: 12px 16px;
+  resize: none;
+  outline: none;
+  font-family: inherit;
+  line-height: 1.5;
+  max-height: 140px;
+  overflow-y: auto;
+  transition: border-color 0.15s;
+}
+
+.input-area textarea:focus {
+  border-color: #5c6bc0;
+}
+
+.input-area textarea::placeholder {
+  color: #4a4e6a;
+}
+
+.input-area button {
+  padding: 0 20px;
+  border-radius: 10px;
+  border: none;
+  background: #3949ab;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+
+.input-area button:hover:not(:disabled) {
+  background: #5c6bc0;
+}
+
+.input-area button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
