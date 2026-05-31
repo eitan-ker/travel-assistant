@@ -1,6 +1,7 @@
 import { getWeather } from '../apis/weather.js';
 import { getCountryInfo } from '../apis/countries.js';
 import { getAttractions } from '../apis/attractions.js';
+import { getExchangeRate } from '../apis/exchangeRate.js';
 import { runDataSupervisor } from '../supervisor/dataSupervisor.js';
 import { log } from '../utils/logger.js';
 
@@ -106,8 +107,17 @@ export async function executeTool(
     };
   }
 
+  if (toolName === 'get_exchange_rate') {
+    const { from_currency, to_currency } = toolInput;
+    const rate = await getExchangeRate(from_currency, to_currency);
+    return {
+      content: `Live exchange rate (${rate.date}):\n1 ${rate.base} = ${rate.rate} ${rate.target}`,
+      source: 'Frankfurter',
+    };
+  }
+
   // Reasoning tools — no execution needed, Claude uses the input to structure its response
-  if (['think_destination_recommendation', 'think_packing_advice', 'think_local_attractions'].includes(toolName)) {
+  if (['think_destination_recommendation', 'think_packing_advice', 'think_local_attractions', 'think_trip_plan'].includes(toolName)) {
     console.log(`[tool] reasoning tool ${toolName} — no execution needed`);
     return {
       content: 'Reasoning complete. Now provide your response based on this structured thinking.',

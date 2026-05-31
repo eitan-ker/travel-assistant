@@ -44,6 +44,8 @@ Then for EACH of the 3 shortlisted destinations, Claude calls `get_country_info`
 
 **`think_local_attractions`** — travel style → neighborhoods → must-sees → hidden gems → food & culture
 
+**`think_trip_plan`** — the full trip planner. When destination, origin, duration, and budget are known: visa situation → getting there → accommodation → week-by-week itinerary → day trips → budget breakdown → practical tips. Always paired with `get_weather`, `get_country_info`, and `get_attractions`.
+
 ### 3. 3-Stage Supervisor Pipeline
 Each supervisor owns one concern, uses Claude tool use for forced structured output:
 
@@ -137,6 +139,7 @@ Server terminal shows a structured log per request — full pipeline visibility 
 | Packing advice | "What to pack for Iceland in winter?" | think_packing_advice |
 | Local attractions | "Best things to do in Barcelona?" | get_attractions + think_local_attractions |
 | Multi-intent | "Should I pack an umbrella for Tokyo?" | get_weather + think_packing_advice |
+| Full trip plan | "I'm going to Netanya for 2 weeks, flying from Thailand, $10k budget" | think_trip_plan + get_weather + get_country_info + get_attractions |
 
 ## Project Structure
 
@@ -150,7 +153,7 @@ travel-assistant/
 │   ├── prompts/system.ts           System prompt + tool philosophy
 │   ├── llm/claude.ts               Claude provider with tool use loop
 │   ├── tools/
-│   │   ├── definitions.ts          6 tool definitions (3 API + 3 chain-of-thought)
+│   │   ├── definitions.ts          7 tool definitions (3 API + 4 chain-of-thought)
 │   │   └── executor.ts             Tool execution + Data Supervisor
 │   ├── supervisor/
 │   │   ├── types.ts                Shared types + runWithRetry (3 attempts)

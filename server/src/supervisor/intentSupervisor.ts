@@ -44,15 +44,17 @@ Available tools:
 - get_weather(city): live weather — use when user specifies a time window (month, season, "right now", "this week", "in June")
 - get_country_info(country): factual data — capital, currency, language
 - get_attractions(city): top POIs — what to see/do in a city
-- think_destination_recommendation: reasoning tool — for destination recommendations
+- think_destination_recommendation: reasoning tool — for destination suggestions when no destination is given
 - think_packing_advice: reasoning tool — for packing questions
 - think_local_attractions: reasoning tool — for local things to do
+- think_trip_plan: reasoning tool — for full trip planning when destination, origin, duration and budget are known. Must be accompanied by get_weather, get_country_info, get_attractions.
 
 Important rules:
-- get_weather is only needed when the user gives a specific time context (month, season, "right now", "this week"). If no time is specified, Claude's general climate knowledge is sufficient — do NOT flag missing get_weather.
+- get_weather is only needed when the user gives a specific time context. If no time is specified, Claude's general climate knowledge is sufficient.
 - think_packing_advice should be called for any packing question.
-- think_destination_recommendation should be called for destination recommendation questions.
+- think_destination_recommendation should be called for destination suggestions.
 - think_local_attractions should be called for "what to do/see" questions.
+- think_trip_plan should be called when user wants a full trip plan and has given destination + origin + duration.
 
 Call review_tool_selection with your verdict. You MUST always provide reasoning.`,
     messages: [
