@@ -70,6 +70,36 @@ body {
   cursor: default;
 }
 
+/* Profile bar */
+.profile-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 24px;
+  background: linear-gradient(90deg, #0d1428 0%, #111827 100%);
+  border-bottom: 1px solid #2a3a5c;
+  flex-wrap: wrap;
+}
+
+.profile-label {
+  font-size: 11px;
+  color: #6b7fa8;
+  font-weight: 600;
+  margin-right: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.profile-tag {
+  font-size: 12px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  background: #162040;
+  color: #93c5fd;
+  border: 1px solid #2563eb;
+  font-weight: 500;
+}
+
 /* Chat area */
 .chat-area {
   flex: 1;
@@ -135,6 +165,13 @@ body {
   display: flex;
   flex-direction: column;
   max-width: 70%;
+}
+
+.thinking-time {
+  font-size: 11px;
+  color: #4a4e6a;
+  margin-bottom: 4px;
+  padding-left: 2px;
 }
 
 .bubble {

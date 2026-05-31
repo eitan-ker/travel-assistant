@@ -4,6 +4,7 @@ import { runIntentSupervisor } from '../supervisor/intentSupervisor.js';
 import { getLLMProvider } from '../llm/factory.js';
 import { ClaudeProvider } from '../llm/claude.js';
 import { log } from '../utils/logger.js';
+import { extractUserContext, formatUserContext, type UserContext } from './userContextExtractor.js';
 import type { Message } from '../llm/provider.js';
 
 export interface SupervisorLog {
@@ -16,16 +17,29 @@ export interface PipelineResult {
   sources: string[];
   toolsUsed: string[];
   supervisors: SupervisorLog[];
+  userContext: UserContext;
 }
 
-export async function runPipeline(history: Message[], userMessage: string): Promise<PipelineResult> {
+export async function runPipeline(
+  history: Message[],
+  userMessage: string,
+  existingContext: UserContext = {},
+): Promise<PipelineResult> {
   const provider = getLLMProvider() as ClaudeProvider;
   const supervisors: SupervisorLog[] = [];
   const allSources = new Set<string>();
   const allTools = new Set<string>();
 
+  // Extract user context in parallel with Travel Agent (no latency cost)
+  const userContextPromise = extractUserContext(userMessage, existingContext);
+
+  const userContextBlock = formatUserContext(existingContext);
+  const systemContent = userContextBlock
+    ? `${SYSTEM_PROMPT}\n\n[User Profile — personalize your response based on this]\n${userContextBlock}`
+    : SYSTEM_PROMPT;
+
   const messages: Message[] = [
-    { role: 'system', content: SYSTEM_PROMPT },
+    { role: 'system', content: systemContent },
     ...history.filter((m) => m.role !== 'system'),
   ];
 
@@ -41,8 +55,9 @@ export async function runPipeline(history: Message[], userMessage: string): Prom
   log.travelAgent(reply, provider.toolsUsed, provider.sources);
 
   if (!supervisorEnabled) {
+    const userContext = await userContextPromise;
     log.pipelineEnd([...allSources]);
-    return { reply, sources: [...allSources], toolsUsed: [...allTools], supervisors };
+    return { reply, sources: [...allSources], toolsUsed: [...allTools], supervisors, userContext };
   }
 
   const recentHistory = history
@@ -119,6 +134,11 @@ export async function runPipeline(history: Message[], userMessage: string): Prom
     supervisors.push({ name: 'Response Supervisor', verdict: 'PASS' });
   }
 
+  const userContext = await userContextPromise;
+  if (Object.keys(userContext).length > Object.keys(existingContext).length) {
+    console.log(`[user-context] updated: ${formatUserContext(userContext)}`);
+  }
+
   log.pipelineEnd([...allSources]);
-  return { reply, sources: [...allSources], toolsUsed: [...allTools], supervisors };
+  return { reply, sources: [...allSources], toolsUsed: [...allTools], supervisors, userContext };
 }

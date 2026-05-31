@@ -4,7 +4,8 @@ import { useChat } from './hooks/useChat';
 import './App.css';
 
 export default function App() {
-  const { messages, loading, send, clear } = useChat();
+  const { messages, loading, send, clear, userContext } = useChat();
+  const hasProfile = Object.values(userContext).some((v) => v && (Array.isArray(v) ? v.length > 0 : true));
   const [input, setInput] = useState('');
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -38,6 +39,18 @@ export default function App() {
         </button>
       </header>
 
+      {hasProfile && (
+        <div className="profile-bar">
+          <span className="profile-label">Traveler profile:</span>
+          {userContext.origin && <span className="profile-tag">from {userContext.origin}</span>}
+          {userContext.tripDuration && <span className="profile-tag">{userContext.tripDuration}</span>}
+          {userContext.budget && <span className="profile-tag">{userContext.budget}</span>}
+          {userContext.travelGroup && <span className="profile-tag">{userContext.travelGroup}</span>}
+          {userContext.interests?.map((i) => <span key={i} className="profile-tag">{i}</span>)}
+          {userContext.travelStyle && <span className="profile-tag">{userContext.travelStyle}</span>}
+        </div>
+      )}
+
       <main className="chat-area">
         {messages.length === 0 && (
           <div className="empty-state">
@@ -59,6 +72,9 @@ export default function App() {
         {messages.map((msg) => (
           <div key={msg.id} className={`message ${msg.role}${msg.error ? ' error' : ''}`}>
             <div className="message-body">
+              {msg.role === 'assistant' && msg.thinkingSeconds !== undefined && (
+                <div className="thinking-time">thought for {msg.thinkingSeconds}s</div>
+              )}
               <div className="bubble">
                 {msg.role === 'assistant'
                   ? <ReactMarkdown>{msg.content}</ReactMarkdown>

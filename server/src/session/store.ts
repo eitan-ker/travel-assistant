@@ -1,16 +1,26 @@
 import type { Message } from '../llm/provider.js';
+import type { UserContext } from '../context/userContextExtractor.js';
 
-const sessions = new Map<string, Message[]>();
+interface Session {
+  messages: Message[];
+  userContext: UserContext;
+}
+
+const sessions = new Map<string, Session>();
+
+function emptySession(): Session {
+  return { messages: [], userContext: {} };
+}
 
 export const sessionStore = {
-  get(sessionId: string): Message[] {
+  get(sessionId: string): Session {
     if (!sessions.has(sessionId)) {
-      sessions.set(sessionId, []);
+      sessions.set(sessionId, emptySession());
     }
     return sessions.get(sessionId)!;
   },
-  set(sessionId: string, messages: Message[]) {
-    sessions.set(sessionId, messages);
+  set(sessionId: string, session: Session) {
+    sessions.set(sessionId, session);
   },
   delete(sessionId: string) {
     sessions.delete(sessionId);

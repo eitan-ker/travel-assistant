@@ -5,12 +5,23 @@ export interface SupervisorLog {
   verdict: 'PASS' | 'REFINED' | 'SKIPPED';
 }
 
+export interface UserContext {
+  origin?: string;
+  interests?: string[];
+  budget?: string;
+  travelStyle?: string;
+  tripDuration?: string;
+  travelGroup?: string;
+  notes?: string;
+}
+
 export interface ChatResponse {
   reply: string;
   sessionId: string;
   sources: string[];
   toolsUsed: string[];
   supervisors: SupervisorLog[];
+  userContext?: UserContext;
 }
 
 export async function sendMessage(message: string, sessionId: string): Promise<ChatResponse> {

@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { sendMessage, clearSession, type SupervisorLog } from '../api/client';
+import { sendMessage, clearSession, type SupervisorLog, type UserContext } from '../api/client';
 
 export interface ChatMessage {
   id: string;
@@ -8,6 +8,7 @@ export interface ChatMessage {
   sources?: string[];
   toolsUsed?: string[];
   supervisors?: SupervisorLog[];
+  thinkingSeconds?: number;
   error?: boolean;
 }
 
@@ -36,6 +37,7 @@ export function useChat() {
   const stored = useRef(loadFromStorage());
   const [messages, setMessages] = useState<ChatMessage[]>(stored.current.messages);
   const [loading, setLoading] = useState(false);
+  const [userContext, setUserContext] = useState<UserContext>({});
   const sessionId = useRef(stored.current.sessionId);
 
   useEffect(() => {
@@ -47,10 +49,13 @@ export function useChat() {
     console.log('[user]', text);
     setMessages((prev) => [...prev, userMsg]);
     setLoading(true);
+    const startTime = Date.now();
 
     try {
-      const { reply, sources, toolsUsed, supervisors } = await sendMessage(text, sessionId.current);
-      const assistantMsg: ChatMessage = { id: generateId(), role: 'assistant', content: reply, sources, toolsUsed, supervisors };
+      const { reply, sources, toolsUsed, supervisors, userContext: newContext } = await sendMessage(text, sessionId.current);
+      const thinkingSeconds = Math.round((Date.now() - startTime) / 1000);
+      const assistantMsg: ChatMessage = { id: generateId(), role: 'assistant', content: reply, sources, toolsUsed, supervisors, thinkingSeconds };
+      if (newContext) setUserContext(newContext);
       console.log('[assistant]', { reply, sources });
       setMessages((prev) => [...prev, assistantMsg]);
     } catch (err) {
@@ -71,8 +76,9 @@ export function useChat() {
     await clearSession(sessionId.current);
     sessionId.current = generateId();
     setMessages([]);
+    setUserContext({});
     localStorage.removeItem(STORAGE_KEY);
   }, []);
 
-  return { messages, loading, send, clear };
+  return { messages, loading, send, clear, userContext };
 }
