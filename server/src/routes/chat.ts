@@ -1,8 +1,6 @@
 import { Router, Request, Response } from 'express';
-import { getLLMProvider } from '../llm/factory.js';
 import { sessionStore } from '../session/store.js';
-import { buildContext } from '../context/builder.js';
-import type { Message } from '../llm/provider.js';
+import { runPipeline } from '../context/builder.js';
 
 export const chatRouter = Router();
 
@@ -18,17 +16,14 @@ chatRouter.post('/', async (req: Request, res: Response) => {
   history.push({ role: 'user', content: message });
 
   try {
-    const { messages, sources } = await buildContext(history, message);
-
-    const provider = getLLMProvider();
-    const reply = await provider.chat(messages);
+    const { reply, sources } = await runPipeline(history, message);
 
     history.push({ role: 'assistant', content: reply });
     sessionStore.set(sessionId, history);
 
     res.json({ reply, sessionId, sources });
   } catch (err) {
-    const msg = err instanceof Error ? err.message : 'LLM request failed';
+    const msg = err instanceof Error ? err.message : 'Request failed';
     res.status(500).json({ error: msg });
   }
 });
