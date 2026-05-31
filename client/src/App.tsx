@@ -72,15 +72,15 @@ export default function App() {
         {messages.map((msg) => (
           <div key={msg.id} className={`message ${msg.role}${msg.error ? ' error' : ''}`}>
             <div className="message-body">
-              {msg.role === 'assistant' && msg.thinkingSeconds !== undefined && (
-                <div className="thinking-time">thought for {msg.thinkingSeconds}s</div>
-              )}
               <div className="bubble">
                 {msg.role === 'assistant'
                   ? <ReactMarkdown>{msg.content}</ReactMarkdown>
                   : msg.content}
               </div>
-              {msg.role === 'assistant' && !msg.error && (
+              {msg.role === 'assistant' && msg.thinkingSeconds !== undefined && !msg.error && (
+                <div className="thinking-time">thought for {msg.thinkingSeconds}s</div>
+              )}
+            {msg.role === 'assistant' && !msg.error && (
                 <div className="message-meta">
                   <div className="sources">
                     {msg.sources?.map((s) => (
