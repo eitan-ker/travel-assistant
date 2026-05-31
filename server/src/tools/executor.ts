@@ -2,6 +2,7 @@ import { getWeather } from '../apis/weather.js';
 import { getCountryInfo } from '../apis/countries.js';
 import { getAttractions } from '../apis/attractions.js';
 import { getExchangeRate } from '../apis/exchangeRate.js';
+import { searchKb } from '../rag/search.js';
 import { runDataSupervisor } from '../supervisor/dataSupervisor.js';
 import { log } from '../utils/logger.js';
 
@@ -114,6 +115,17 @@ export async function executeTool(
       content: `Live exchange rate (${rate.date}):\n1 ${rate.base} = ${rate.rate} ${rate.target}`,
       source: 'Frankfurter',
     };
+  }
+
+  if (toolName === 'search_travel_kb') {
+    const query = toolInput.query;
+    const docs = await searchKb(query, 3);
+    if (docs.length === 0) {
+      return { content: 'No relevant knowledge base results found. Use your general knowledge.', source: '' };
+    }
+    const result = docs.map((d) => `[${d.destination} — ${d.source}]\n${d.content}`).join('\n\n---\n\n');
+    console.log(`[rag] query: "${query}" → ${docs.length} docs: ${docs.map((d) => d.id).join(', ')}`);
+    return { content: result, source: 'Knowledge Base' };
   }
 
   // Reasoning tools — no execution needed, Claude uses the input to structure its response

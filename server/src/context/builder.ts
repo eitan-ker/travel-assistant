@@ -98,7 +98,7 @@ export async function runPipeline(
   }
 
   // ── Data Supervisor — runs inside executor.ts per tool call ─────────────
-  const hasLiveData = [...allSources].some((s) => ['OpenWeatherMap', 'RestCountries', 'OpenTripMap', 'Frankfurter'].includes(s));
+  const hasLiveData = [...allSources].some((s) => ['OpenWeatherMap', 'RestCountries', 'OpenTripMap', 'Frankfurter', 'Knowledge Base'].includes(s));
   if (hasLiveData) {
     supervisors.push({ name: 'Data Supervisor', verdict: 'PASS' });
   } else {
@@ -108,7 +108,7 @@ export async function runPipeline(
 
   // ── Response Supervisor ──────────────────────────────────────────────────
   // Use optimistic result if Intent passed (reply unchanged), re-run if Intent retried
-  const liveDataSources = [...allSources].filter((s) => ['OpenWeatherMap', 'RestCountries', 'OpenTripMap', 'Frankfurter'].includes(s));
+  const liveDataSources = [...allSources].filter((s) => ['OpenWeatherMap', 'RestCountries', 'OpenTripMap', 'Frankfurter', 'Knowledge Base'].includes(s));
   const responseResult = intentResult.verdict === 'REFINE'
     ? await runResponseSupervisor(userMessage, reply, recentHistory, liveDataSources)
     : optimisticResponseResult;

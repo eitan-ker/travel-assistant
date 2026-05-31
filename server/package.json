@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "nodemon --watch src --ext ts --exec 'node --loader ts-node/esm src/index.ts'",
     "build": "tsc",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "build:kb": "node --loader ts-node/esm scripts/buildKb.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.100.1",
