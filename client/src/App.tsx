@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, KeyboardEvent } from 'react';
+import ReactMarkdown from 'react-markdown';
 import { useChat } from './hooks/useChat';
 import './App.css';
 
@@ -58,12 +59,33 @@ export default function App() {
         {messages.map((msg) => (
           <div key={msg.id} className={`message ${msg.role}${msg.error ? ' error' : ''}`}>
             <div className="message-body">
-              <div className="bubble">{msg.content}</div>
-              {msg.role === 'assistant' && !msg.error && msg.sources && (
-                <div className="sources">
-                  {msg.sources.map((s) => (
-                    <span key={s} className="source-tag">{s}</span>
-                  ))}
+              <div className="bubble">
+                {msg.role === 'assistant'
+                  ? <ReactMarkdown>{msg.content}</ReactMarkdown>
+                  : msg.content}
+              </div>
+              {msg.role === 'assistant' && !msg.error && (
+                <div className="message-meta">
+                  <div className="sources">
+                    {msg.sources?.map((s) => (
+                      <span key={s} className="source-tag">{s}</span>
+                    ))}
+                    {msg.toolsUsed?.map((t) => (
+                      <span key={t} className={t.startsWith('think_') ? 'cot-tag' : 'tool-tag'}>
+                        {t.replace(/_/g, ' ')}
+                      </span>
+                    ))}
+                  </div>
+                  {msg.supervisors && msg.supervisors.length > 0 && (
+                    <div className="supervisor-list">
+                      {msg.supervisors.map((s) => (
+                        <div key={s.name} className={`supervisor-row ${s.verdict.toLowerCase()}`}>
+                          <span className="supervisor-name">{s.name}</span>
+                          <span className="supervisor-verdict">{s.verdict}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

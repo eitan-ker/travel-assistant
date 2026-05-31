@@ -164,12 +164,29 @@ body {
   border: 1px solid #4a1a1a;
 }
 
+/* Message meta (sources + supervisors) */
+.message-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+/* Markdown inside bubbles */
+.bubble p { margin: 0 0 8px; }
+.bubble p:last-child { margin-bottom: 0; }
+.bubble ul, .bubble ol { margin: 4px 0 8px 16px; }
+.bubble li { margin-bottom: 2px; }
+.bubble strong { color: #e8eaf0; font-weight: 600; }
+.bubble h1, .bubble h2, .bubble h3 { font-size: 14px; font-weight: 600; margin: 8px 0 4px; color: #e8eaf0; }
+.bubble code { background: #0d1117; padding: 1px 5px; border-radius: 3px; font-size: 13px; }
+.bubble hr { border: none; border-top: 1px solid #2a2d3e; margin: 8px 0; }
+
 /* Source badges */
 .sources {
   display: flex;
   gap: 6px;
-  margin-top: 6px;
-  padding-left: 2px;
+  flex-wrap: wrap;
 }
 
 .source-tag {
@@ -180,6 +197,77 @@ body {
   color: #5c6bc0;
   border: 1px solid #2a2d5e;
   font-weight: 500;
+}
+
+.cot-tag {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 20px;
+  background: #1e1a0a;
+  color: #fdd835;
+  border: 1px solid #f9a825;
+  font-weight: 500;
+}
+
+.tool-tag {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 20px;
+  background: #0d1a20;
+  color: rgb(173, 216, 230);
+  border: 1px solid rgb(173, 216, 230);
+  font-weight: 500;
+}
+
+/* Supervisor list */
+.supervisor-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.supervisor-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+}
+
+.supervisor-name {
+  color: #7c6fa0;
+  font-weight: 500;
+  min-width: 140px;
+}
+
+.supervisor-verdict {
+  padding: 1px 8px;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 10px;
+  letter-spacing: 0.5px;
+}
+
+.supervisor-row.pass .supervisor-verdict {
+  background: #1a0a2e;
+  color: #ce93d8;
+  border: 1px solid #6a1fa8;
+}
+
+.supervisor-row.refined .supervisor-verdict {
+  background: #1a0a2e;
+  color: #ea80fc;
+  border: 1px solid #aa00ff;
+}
+
+.supervisor-row.skipped .supervisor-name,
+.supervisor-row.skipped .supervisor-verdict {
+  opacity: 0.35;
+}
+
+.supervisor-row.skipped .supervisor-verdict {
+  background: transparent;
+  border: 1px solid #333;
+  color: #666;
 }
 
 /* Typing indicator */

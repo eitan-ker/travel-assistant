@@ -16,12 +16,12 @@ chatRouter.post('/', async (req: Request, res: Response) => {
   history.push({ role: 'user', content: message });
 
   try {
-    const { reply, sources } = await runPipeline(history, message);
+    const { reply, sources, toolsUsed, supervisors } = await runPipeline(history, message);
 
     history.push({ role: 'assistant', content: reply });
     sessionStore.set(sessionId, history);
 
-    res.json({ reply, sessionId, sources });
+    res.json({ reply, sessionId, sources, toolsUsed, supervisors });
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Request failed';
     res.status(500).json({ error: msg });

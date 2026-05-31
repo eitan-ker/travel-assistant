@@ -1,9 +1,16 @@
 const SERVER_URL = 'http://localhost:3001';
 
+export interface SupervisorLog {
+  name: string;
+  verdict: 'PASS' | 'REFINED' | 'SKIPPED';
+}
+
 export interface ChatResponse {
   reply: string;
   sessionId: string;
   sources: string[];
+  toolsUsed: string[];
+  supervisors: SupervisorLog[];
 }
 
 export async function sendMessage(message: string, sessionId: string): Promise<ChatResponse> {

@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import type { WeatherData } from '../apis/weather.js';
 import type { CountryData } from '../apis/countries.js';
-import type { SupervisorResult } from './types.js';
+import { runWithRetry, type SupervisorResult } from './types.js';
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -29,14 +29,16 @@ const TOOL: Anthropic.Tool = {
   },
 };
 
-export async function runDataSupervisor(
+async function callDataSupervisor(
   userMessage: string,
-  data: WeatherData | CountryData,
-  dataType: 'weather' | 'country_info',
+  data: WeatherData | CountryData | string,
+  dataType: 'weather' | 'country_info' | 'attractions',
 ): Promise<SupervisorResult> {
-  const dataDescription = dataType === 'weather'
-    ? `Weather data fetched for: ${(data as WeatherData).city}, ${(data as WeatherData).country}`
-    : `Country data fetched for: ${(data as CountryData).name} (${(data as CountryData).region})`;
+  const dataDescription = typeof data === 'string'
+    ? data
+    : dataType === 'weather'
+      ? `Weather data fetched for: ${(data as WeatherData).city}, ${(data as WeatherData).country}`
+      : `Country data fetched for: ${(data as CountryData).name} (${(data as CountryData).region})`;
 
   const response = await client.messages.create({
     model: process.env.CLAUDE_MODEL ?? 'claude-haiku-4-5-20251001',
@@ -46,14 +48,11 @@ export async function runDataSupervisor(
     system: `You are a data relevance validator for a travel assistant.
 Your only job is to check if the external data fetched actually matches what the user asked for.
 Common failure: wrong city fetched (e.g. "Paris, Texas" instead of "Paris, France"), or irrelevant country returned.
-Call review_data with your verdict.`,
+Call review_data with your verdict. You MUST always provide reasoning.`,
     messages: [
       {
         role: 'user',
-        content: `User message: "${userMessage}"
-${dataDescription}
-
-Is this the correct data for the user's query?`,
+        content: `User message: "${userMessage}"\n${dataDescription}\n\nIs this the correct data for the user's query?`,
       },
     ],
   });
@@ -61,7 +60,14 @@ Is this the correct data for the user's query?`,
   const toolUse = response.content.find((b) => b.type === 'tool_use');
   if (!toolUse || toolUse.type !== 'tool_use') return { verdict: 'PASS', reasoning: 'No tool use response' };
 
-  const input = toolUse.input as { verdict: string; reasoning: string; feedback?: string };
-  console.log(`[data-supervisor] reasoning: ${input.reasoning}`);
-  return { verdict: input.verdict as 'PASS' | 'REFINE', reasoning: input.reasoning, feedback: input.feedback };
+  const input = toolUse.input as { verdict: string; reasoning?: string; feedback?: string };
+  return { verdict: input.verdict as 'PASS' | 'REFINE', reasoning: input.reasoning ?? '', feedback: input.feedback };
+}
+
+export function runDataSupervisor(
+  userMessage: string,
+  data: WeatherData | CountryData | string,
+  dataType: 'weather' | 'country_info' | 'attractions',
+): Promise<SupervisorResult> {
+  return runWithRetry('data-supervisor', () => callDataSupervisor(userMessage, data, dataType));
 }

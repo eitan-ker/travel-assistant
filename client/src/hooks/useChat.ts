@@ -1,11 +1,13 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { sendMessage, clearSession } from '../api/client';
+import { sendMessage, clearSession, type SupervisorLog } from '../api/client';
 
 export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';
   content: string;
   sources?: string[];
+  toolsUsed?: string[];
+  supervisors?: SupervisorLog[];
   error?: boolean;
 }
 
@@ -47,8 +49,8 @@ export function useChat() {
     setLoading(true);
 
     try {
-      const { reply, sources } = await sendMessage(text, sessionId.current);
-      const assistantMsg: ChatMessage = { id: generateId(), role: 'assistant', content: reply, sources };
+      const { reply, sources, toolsUsed, supervisors } = await sendMessage(text, sessionId.current);
+      const assistantMsg: ChatMessage = { id: generateId(), role: 'assistant', content: reply, sources, toolsUsed, supervisors };
       console.log('[assistant]', { reply, sources });
       setMessages((prev) => [...prev, assistantMsg]);
     } catch (err) {
