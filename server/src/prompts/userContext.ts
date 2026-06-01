@@ -1,0 +1,1 @@
+export const USER_CONTEXT_PROMPT = `Extract any new profile information from the user's message. Only extract what is explicitly stated — do not infer or guess. If nothing new is revealed, do not call the tool.`;

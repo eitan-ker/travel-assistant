@@ -70,7 +70,6 @@ Do NOT call when:
       required: ['city'],
     },
   },
-
   {
     name: 'get_exchange_rate',
     description: `Get the live exchange rate between two currencies. No API key required.
@@ -97,7 +96,6 @@ Do NOT call when:
       required: ['from_currency', 'to_currency'],
     },
   },
-
   {
     name: 'search_travel_kb',
     description: `Search the travel knowledge base (WikiVoyage + Wikipedia) for destination-specific intelligence.
@@ -134,31 +132,16 @@ Always call this before giving destination recommendations.
 After filling this in:
 1. Call get_country_info, get_weather, AND get_attractions for EACH of your 3 shortlisted destinations
 2. Use that live data to enrich and validate each recommendation
-3. Present all 5 options to the user with real, grounded reasoning (current weather, country facts, top attractions)
+3. Present all 3 options to the user with real, grounded reasoning (current weather, country facts, top attractions)
 4. Do NOT jump to packing or itinerary — wait for the user to confirm a destination first.`,
     input_schema: {
       type: 'object' as const,
       properties: {
-        budget_level: {
-          type: 'string',
-          description: 'Budget level from user: budget / mid-range / luxury / unspecified',
-        },
-        travel_season: {
-          type: 'string',
-          description: 'When the user is traveling and what that means for weather and crowds',
-        },
-        interests: {
-          type: 'string',
-          description: 'User interests: adventure, culture, food, relaxation, nightlife, nature, etc.',
-        },
-        shortlist: {
-          type: 'string',
-          description: 'Exactly 3 destinations that best match the above criteria — list them as: "1. City, Country — reason"',
-        },
-        top_pick: {
-          type: 'string',
-          description: 'The single strongest match and the specific reason it fits this user',
-        },
+        budget_level: { type: 'string', description: 'Budget level from user: budget / mid-range / luxury / unspecified' },
+        travel_season: { type: 'string', description: 'When the user is traveling and what that means for weather and crowds' },
+        interests: { type: 'string', description: 'User interests: adventure, culture, food, relaxation, nightlife, nature, etc.' },
+        shortlist: { type: 'string', description: 'Exactly 3 destinations that best match the above criteria — list them as: "1. City, Country — reason"' },
+        top_pick: { type: 'string', description: 'The single strongest match and the specific reason it fits this user' },
       },
       required: ['budget_level', 'travel_season', 'interests', 'shortlist', 'top_pick'],
     },
@@ -170,26 +153,11 @@ Always call this before giving a packing list or packing recommendations.`,
     input_schema: {
       type: 'object' as const,
       properties: {
-        destination_climate: {
-          type: 'string',
-          description: 'Climate and weather at the destination during the travel period',
-        },
-        trip_length: {
-          type: 'string',
-          description: 'Trip duration (e.g. weekend, 1 week, 2 weeks)',
-        },
-        planned_activities: {
-          type: 'string',
-          description: 'Activities planned: beach, hiking, business meetings, city exploring, etc.',
-        },
-        essentials: {
-          type: 'string',
-          description: 'Non-negotiable items for this specific trip',
-        },
-        nice_to_have: {
-          type: 'string',
-          description: 'Optional items worth considering',
-        },
+        destination_climate: { type: 'string', description: 'Climate and weather at the destination during the travel period' },
+        trip_length: { type: 'string', description: 'Trip duration (e.g. weekend, 1 week, 2 weeks)' },
+        planned_activities: { type: 'string', description: 'Activities planned: beach, hiking, business meetings, city exploring, etc.' },
+        essentials: { type: 'string', description: 'Non-negotiable items for this specific trip' },
+        nice_to_have: { type: 'string', description: 'Optional items worth considering' },
       },
       required: ['destination_climate', 'trip_length', 'planned_activities', 'essentials'],
     },
@@ -201,26 +169,11 @@ Call this alongside get_attractions to structure your thinking before responding
     input_schema: {
       type: 'object' as const,
       properties: {
-        travel_style: {
-          type: 'string',
-          description: 'User travel style: culture, food, nightlife, nature, off-the-beaten-path, etc.',
-        },
-        neighborhood_breakdown: {
-          type: 'string',
-          description: 'Key neighborhoods and what each offers',
-        },
-        must_sees: {
-          type: 'string',
-          description: 'Genuine must-see spots (not just tourist traps)',
-        },
-        hidden_gems: {
-          type: 'string',
-          description: 'Less obvious but excellent spots worth knowing',
-        },
-        food_and_culture: {
-          type: 'string',
-          description: 'Best local food experiences and cultural highlights specific to this city',
-        },
+        travel_style: { type: 'string', description: 'User travel style: culture, food, nightlife, nature, off-the-beaten-path, etc.' },
+        neighborhood_breakdown: { type: 'string', description: 'Key neighborhoods and what each offers' },
+        must_sees: { type: 'string', description: 'Genuine must-see spots (not just tourist traps)' },
+        hidden_gems: { type: 'string', description: 'Less obvious but excellent spots worth knowing' },
+        food_and_culture: { type: 'string', description: 'Best local food experiences and cultural highlights specific to this city' },
       },
       required: ['travel_style', 'must_sees', 'food_and_culture'],
     },
@@ -254,54 +207,18 @@ Never present estimates as verified facts.`,
     input_schema: {
       type: 'object' as const,
       properties: {
-        destination: {
-          type: 'string',
-          description: 'The destination city and country',
-        },
-        origin: {
-          type: 'string',
-          description: 'Where the traveler is flying from — used to assess visa requirements and flight options',
-        },
-        duration: {
-          type: 'string',
-          description: 'Trip length (e.g. "2 weeks", "10 days")',
-        },
-        budget: {
-          type: 'string',
-          description: 'Total budget and currency (e.g. "$5,000", "€2,000", "unspecified")',
-        },
-        travel_style: {
-          type: 'string',
-          description: 'What the traveler wants: beach, nightlife, culture, adventure, food, relaxation, mix',
-        },
-        visa_situation: {
-          type: 'string',
-          description: 'Visa requirements for this traveler (origin passport → destination country)',
-        },
-        getting_there: {
-          type: 'string',
-          description: 'How to get from origin to destination — flight options, typical duration, cost range',
-        },
-        accommodation: {
-          type: 'string',
-          description: 'Recommended area to stay, type (hotel/Airbnb/hostel), and ballpark nightly cost',
-        },
-        weekly_structure: {
-          type: 'string',
-          description: 'Day-by-day or week-by-week breakdown of the trip — what to do, see, and experience',
-        },
-        day_trips: {
-          type: 'string',
-          description: 'Recommended day trips from the destination with travel time and highlights',
-        },
-        budget_breakdown: {
-          type: 'string',
-          description: 'Estimated cost breakdown by category: flights, accommodation, food, activities, transport',
-        },
-        practical_tips: {
-          type: 'string',
-          description: 'Essential tips: weather, what to pack, local customs, transport, safety, currency',
-        },
+        destination: { type: 'string', description: 'The destination city and country' },
+        origin: { type: 'string', description: 'Where the traveler is flying from — used to assess visa requirements and flight options' },
+        duration: { type: 'string', description: 'Trip length (e.g. "2 weeks", "10 days")' },
+        budget: { type: 'string', description: 'Total budget and currency (e.g. "$5,000", "€2,000", "unspecified")' },
+        travel_style: { type: 'string', description: 'What the traveler wants: beach, nightlife, culture, adventure, food, relaxation, mix' },
+        visa_situation: { type: 'string', description: 'Visa requirements for this traveler (origin passport → destination country)' },
+        getting_there: { type: 'string', description: 'How to get from origin to destination — flight options, typical duration, cost range' },
+        accommodation: { type: 'string', description: 'Recommended area to stay, type (hotel/Airbnb/hostel), and ballpark nightly cost' },
+        weekly_structure: { type: 'string', description: 'Day-by-day or week-by-week breakdown of the trip — what to do, see, and experience' },
+        day_trips: { type: 'string', description: 'Recommended day trips from the destination with travel time and highlights' },
+        budget_breakdown: { type: 'string', description: 'Estimated cost breakdown by category: flights, accommodation, food, activities, transport' },
+        practical_tips: { type: 'string', description: 'Essential tips: weather, what to pack, local customs, transport, safety, currency' },
       },
       required: ['destination', 'origin', 'duration', 'travel_style', 'visa_situation', 'getting_there', 'accommodation', 'weekly_structure', 'budget_breakdown'],
     },

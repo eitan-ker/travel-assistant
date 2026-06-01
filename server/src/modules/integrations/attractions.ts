@@ -32,7 +32,8 @@ export async function getAttractions(city: string, limit = 10): Promise<Attracti
 
   const { lat, lon } = await getCityCoords(city, key);
 
-  const url = `https://api.opentripmap.com/0.1/en/places/radius` +
+  const url =
+    `https://api.opentripmap.com/0.1/en/places/radius` +
     `?radius=10000&lon=${lon}&lat=${lat}` +
     `&kinds=interesting_places` +
     `&rate=3&limit=${limit}` +
@@ -45,9 +46,5 @@ export async function getAttractions(city: string, limit = 10): Promise<Attracti
   const data = (await res.json()) as OTMPlace[];
   return data
     .filter((p) => p.name)
-    .map((p) => ({
-      name: p.name,
-      kinds: p.kinds.replace(/_/g, ' '),
-      rate: p.rate,
-    }));
+    .map((p) => ({ name: p.name, kinds: p.kinds.replace(/_/g, ' '), rate: p.rate }));
 }

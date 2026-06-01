@@ -3,9 +3,9 @@ import { writeFileSync, appendFileSync, mkdirSync, existsSync, readFileSync } fr
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import Anthropic from '@anthropic-ai/sdk';
-import { embed } from '../src/rag/embedder.js';
-import { UNIQUE_DESTINATIONS } from '../src/rag/destinations.js';
-import type { KBDoc } from '../src/rag/types.js';
+import { embed } from '../src/modules/rag/embedder.js';
+import { UNIQUE_DESTINATIONS } from '../src/modules/rag/destinations.js';
+import type { KBDoc } from '../src/modules/rag/types.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const claude = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });

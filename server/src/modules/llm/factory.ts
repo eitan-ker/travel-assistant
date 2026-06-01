@@ -1,4 +1,4 @@
-import type { LLMProvider } from './provider.js';
+import type { LLMProvider } from './types.js';
 import { ClaudeProvider } from './claude.js';
 
 export function getLLMProvider(): LLMProvider {

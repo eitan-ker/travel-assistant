@@ -1,24 +1,15 @@
-import { SYSTEM_PROMPT } from '../prompts/system.js';
-import { runResponseSupervisor } from '../supervisor/responseSupervisor.js';
-import { runIntentSupervisor } from '../supervisor/intentSupervisor.js';
+import { SYSTEM_PROMPT } from '../../prompts/system.js';
+import { runResponseSupervisor } from '../supervisor/response.js';
+import { runIntentSupervisor } from '../supervisor/intent.js';
 import { getLLMProvider } from '../llm/factory.js';
 import { ClaudeProvider } from '../llm/claude.js';
-import { log } from '../utils/logger.js';
-import { extractUserContext, formatUserContext, type UserContext } from './userContextExtractor.js';
-import type { Message } from '../llm/provider.js';
+import { log } from '../../utils/logger.js';
+import { extractUserContext, formatUserContext } from '../session/userContext.js';
+import type { UserContext } from '../session/types.js';
+import type { Message } from '../../shared/types.js';
+import type { PipelineResult, SupervisorLog } from './types.js';
 
-export interface SupervisorLog {
-  name: string;
-  verdict: 'PASS' | 'REFINED' | 'SKIPPED';
-}
-
-export interface PipelineResult {
-  reply: string;
-  sources: string[];
-  toolsUsed: string[];
-  supervisors: SupervisorLog[];
-  userContext: UserContext;
-}
+const LIVE_SOURCES = new Set(['OpenWeatherMap', 'RestCountries', 'OpenTripMap', 'Frankfurter', 'Knowledge Base', 'Web Search']);
 
 export async function runPipeline(
   history: Message[],
@@ -30,7 +21,6 @@ export async function runPipeline(
   const allSources = new Set<string>();
   const allTools = new Set<string>();
 
-  // Extract user context in parallel with Travel Agent (no latency cost)
   const userContextPromise = extractUserContext(userMessage, existingContext);
 
   const userContextBlock = formatUserContext(existingContext);
@@ -69,8 +59,11 @@ export async function runPipeline(
   // ── Intent + Response Supervisors — run in parallel (optimistic) ─────────
   const [intentResult, optimisticResponseResult] = await Promise.all([
     runIntentSupervisor(userMessage, [...allTools]),
-    runResponseSupervisor(userMessage, reply, recentHistory,
-      [...allSources].filter((s) => ['OpenWeatherMap', 'RestCountries', 'OpenTripMap'].includes(s))
+    runResponseSupervisor(
+      userMessage,
+      reply,
+      recentHistory,
+      [...allSources].filter((s) => LIVE_SOURCES.has(s)),
     ),
   ]);
 
@@ -98,7 +91,7 @@ export async function runPipeline(
   }
 
   // ── Data Supervisor — runs inside executor.ts per tool call ─────────────
-  const hasLiveData = [...allSources].some((s) => ['OpenWeatherMap', 'RestCountries', 'OpenTripMap', 'Frankfurter', 'Knowledge Base'].includes(s));
+  const hasLiveData = [...allSources].some((s) => LIVE_SOURCES.has(s));
   if (hasLiveData) {
     supervisors.push({ name: 'Data Supervisor', verdict: 'PASS' });
   } else {
@@ -107,8 +100,7 @@ export async function runPipeline(
   }
 
   // ── Response Supervisor ──────────────────────────────────────────────────
-  // Use optimistic result if Intent passed (reply unchanged), re-run if Intent retried
-  const liveDataSources = [...allSources].filter((s) => ['OpenWeatherMap', 'RestCountries', 'OpenTripMap', 'Frankfurter', 'Knowledge Base'].includes(s));
+  const liveDataSources = [...allSources].filter((s) => LIVE_SOURCES.has(s));
   const responseResult = intentResult.verdict === 'REFINE'
     ? await runResponseSupervisor(userMessage, reply, recentHistory, liveDataSources)
     : optimisticResponseResult;

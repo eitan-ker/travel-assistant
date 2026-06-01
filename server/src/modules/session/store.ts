@@ -1,5 +1,5 @@
-import type { Message } from '../llm/provider.js';
-import type { UserContext } from '../context/userContextExtractor.js';
+import type { Message } from '../../shared/types.js';
+import type { UserContext } from './types.js';
 
 interface Session {
   messages: Message[];

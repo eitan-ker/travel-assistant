@@ -1,14 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
-
-export interface UserContext {
-  origin?: string;
-  interests?: string[];
-  budget?: string;
-  travelStyle?: string;
-  tripDuration?: string;
-  travelGroup?: string;
-  notes?: string;
-}
+import type { UserContext } from './types.js';
+import { USER_CONTEXT_PROMPT } from '../../prompts/userContext.js';
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -40,7 +32,7 @@ export async function extractUserContext(userMessage: string, existing: UserCont
     max_tokens: 256,
     tools: [TOOL],
     tool_choice: { type: 'auto' },
-    system: `Extract any new profile information from the user's message. Only extract what is explicitly stated — do not infer or guess. If nothing new is revealed, do not call the tool.`,
+    system: USER_CONTEXT_PROMPT,
     messages: [
       {
         role: 'user',

@@ -1,7 +1,8 @@
 import Anthropic from '@anthropic-ai/sdk';
-import type { WeatherData } from '../apis/weather.js';
-import type { CountryData } from '../apis/countries.js';
+import type { WeatherData } from '../integrations/weather.js';
+import type { CountryData } from '../integrations/countries.js';
 import { runWithRetry, type SupervisorResult } from './types.js';
+import { DATA_SUPERVISOR_PROMPT } from '../../prompts/dataSupervisor.js';
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -29,7 +30,7 @@ const TOOL: Anthropic.Tool = {
   },
 };
 
-async function callDataSupervisor(
+async function call(
   userMessage: string,
   data: WeatherData | CountryData | string,
   dataType: 'weather' | 'country_info' | 'attractions',
@@ -45,10 +46,7 @@ async function callDataSupervisor(
     max_tokens: 256,
     tools: [TOOL],
     tool_choice: { type: 'auto' },
-    system: `You are a data relevance validator for a travel assistant.
-Your only job is to check if the external data fetched actually matches what the user asked for.
-Common failure: wrong city fetched (e.g. "Paris, Texas" instead of "Paris, France"), or irrelevant country returned.
-Call review_data with your verdict. You MUST always provide reasoning.`,
+    system: DATA_SUPERVISOR_PROMPT,
     messages: [
       {
         role: 'user',
@@ -69,5 +67,5 @@ export function runDataSupervisor(
   data: WeatherData | CountryData | string,
   dataType: 'weather' | 'country_info' | 'attractions',
 ): Promise<SupervisorResult> {
-  return runWithRetry('data-supervisor', () => callDataSupervisor(userMessage, data, dataType));
+  return runWithRetry('data-supervisor', () => call(userMessage, data, dataType));
 }

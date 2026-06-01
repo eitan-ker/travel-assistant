@@ -1,15 +1,18 @@
-import { getWeather } from '../apis/weather.js';
-import { getCountryInfo } from '../apis/countries.js';
-import { getAttractions } from '../apis/attractions.js';
-import { getExchangeRate } from '../apis/exchangeRate.js';
-import { searchKb } from '../rag/search.js';
-import { runDataSupervisor } from '../supervisor/dataSupervisor.js';
-import { log } from '../utils/logger.js';
+import { getWeather } from '../integrations/weather.js';
+import { getCountryInfo } from '../integrations/countries.js';
+import { getAttractions } from '../integrations/attractions.js';
+import { getExchangeRate } from '../integrations/exchangeRate.js';
+import { searchKb } from '../rag/index.js';
+import { runDataSupervisor } from '../supervisor/data.js';
+import { log } from '../../utils/logger.js';
+import type { ToolExecutionResult } from './types.js';
 
-export interface ToolExecutionResult {
-  content: string;
-  source: string;
-}
+const REASONING_TOOLS = new Set([
+  'think_destination_recommendation',
+  'think_packing_advice',
+  'think_local_attractions',
+  'think_trip_plan',
+]);
 
 export async function executeTool(
   toolName: string,
@@ -21,12 +24,7 @@ export async function executeTool(
     const city = toolInput.city;
     const weather = await getWeather(city);
 
-    const dataResult = await runDataSupervisor(
-      `weather for ${city}`,
-      weather,
-      'weather',
-    );
-
+    const dataResult = await runDataSupervisor(`weather for ${city}`, weather, 'weather');
     if (dataResult.verdict === 'REFINE') {
       console.warn(`[data-supervisor] weather data rejected: ${dataResult.feedback}`);
       return {
@@ -49,12 +47,7 @@ export async function executeTool(
     const country = toolInput.country;
     const info = await getCountryInfo(country);
 
-    const dataResult = await runDataSupervisor(
-      `country info for ${country}`,
-      info,
-      'country_info',
-    );
-
+    const dataResult = await runDataSupervisor(`country info for ${country}`, info, 'country_info');
     if (dataResult.verdict === 'REFINE') {
       console.warn(`[data-supervisor] country data rejected: ${dataResult.feedback}`);
       return {
@@ -128,13 +121,9 @@ export async function executeTool(
     return { content: result, source: 'Knowledge Base' };
   }
 
-  // Reasoning tools — no execution needed, Claude uses the input to structure its response
-  if (['think_destination_recommendation', 'think_packing_advice', 'think_local_attractions', 'think_trip_plan'].includes(toolName)) {
+  if (REASONING_TOOLS.has(toolName)) {
     console.log(`[tool] reasoning tool ${toolName} — no execution needed`);
-    return {
-      content: 'Reasoning complete. Now provide your response based on this structured thinking.',
-      source: '',
-    };
+    return { content: 'Reasoning complete. Now provide your response based on this structured thinking.', source: '' };
   }
 
   throw new Error(`Unknown tool: ${toolName}`);

@@ -4,7 +4,7 @@ import { fileURLToPath } from 'url';
 import type { KBDoc } from './types.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const KB_PATH = join(__dirname, '../../data/kb.jsonl');
+const KB_PATH = join(__dirname, '../../../data/kb.jsonl');
 
 let kb: KBDoc[] = [];
 

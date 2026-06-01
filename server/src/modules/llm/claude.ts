@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
-import type { LLMProvider, Message } from './provider.js';
-import { TRAVEL_TOOLS } from '../tools/definitions.js';
-import { executeTool } from '../tools/executor.js';
+import type { LLMProvider, Message } from './types.js';
+import { TRAVEL_TOOLS } from '../tools/index.js';
+import { executeTool } from '../tools/index.js';
 
 export class ClaudeProvider implements LLMProvider {
   private readonly client: Anthropic;
@@ -27,33 +27,48 @@ export class ClaudeProvider implements LLMProvider {
       content: m.content,
     }));
 
-    // Tool use loop — Claude may call multiple tools before giving a final response
     while (true) {
       const response = await this.client.messages.create({
         model: this.model,
-        max_tokens: 1024,
+        max_tokens: 8096,
         ...(system ? { system } : {}),
-        tools: TRAVEL_TOOLS,
+        tools: [...TRAVEL_TOOLS, { type: 'web_search_20250305' as const, name: 'web_search' as const }],
         tool_choice: { type: 'auto' },
         messages: anthropicMessages,
       });
 
-      // If Claude is done — return the text response
-      if (response.stop_reason === 'end_turn') {
+      if (response.stop_reason === 'end_turn' || response.stop_reason === 'max_tokens') {
+        const hasWebResults = response.content.some((b) => b.type === 'web_search_tool_result');
+        if (hasWebResults) {
+          this.sources.push('Web Search');
+          this.toolsUsed.push('web_search');
+        }
+        if (response.stop_reason === 'max_tokens') {
+          console.warn('[claude] max_tokens hit — response was truncated');
+        }
         const textBlock = response.content.find((b) => b.type === 'text');
         return textBlock?.type === 'text' ? textBlock.text : '';
       }
 
-      // Claude wants to call tools
       if (response.stop_reason === 'tool_use') {
         anthropicMessages.push({ role: 'assistant', content: response.content });
 
         const toolBlocks = response.content.filter((b) => b.type === 'tool_use') as Anthropic.ToolUseBlock[];
         toolBlocks.forEach((b) => this.toolsUsed.push(b.name));
 
-        // Execute all tool calls in parallel
+        // Web search is server-executed by Anthropic — skip client-side execution for those
+        const clientToolBlocks = toolBlocks.filter((b) => b.name !== 'web_search');
+        const hasWebSearch = toolBlocks.some((b) => b.name === 'web_search');
+
+        if (hasWebSearch) this.sources.push('Web Search');
+
+        if (clientToolBlocks.length === 0) {
+          // Only web search calls — Anthropic handles them, just continue the loop
+          continue;
+        }
+
         const toolResults = await Promise.all(
-          toolBlocks.map(async (block): Promise<Anthropic.ToolResultBlockParam> => {
+          clientToolBlocks.map(async (block): Promise<Anthropic.ToolResultBlockParam> => {
             try {
               const result = await executeTool(block.name, block.input as Record<string, string>);
               if (result.source) this.sources.push(result.source);
@@ -71,7 +86,6 @@ export class ClaudeProvider implements LLMProvider {
           }),
         );
 
-        // Return tool results to Claude so it can continue
         anthropicMessages.push({ role: 'user', content: toolResults });
       }
     }
