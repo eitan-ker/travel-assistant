@@ -19,6 +19,15 @@ const LIVE_SOURCES = new Set<string>([
   DataSource.WebSearch,
 ]);
 
+function collectProviderOutput(
+  provider: ClaudeProvider,
+  allSources: Set<string>,
+  allTools: Set<string>,
+): void {
+  provider.sources.forEach((s) => allSources.add(s));
+  provider.toolsUsed.forEach((t) => allTools.add(t));
+}
+
 export async function runPipeline(
   history: Message[],
   userMessage: string,
@@ -47,8 +56,7 @@ export async function runPipeline(
 
   // ── Travel Agent (initial) ───────────────────────────────────────────────
   let reply = await provider.chat(messages);
-  provider.sources.forEach((s) => allSources.add(s));
-  provider.toolsUsed.forEach((t) => allTools.add(t));
+  collectProviderOutput(provider, allSources, allTools);
 
   log.travelAgent(reply, provider.toolsUsed, provider.sources);
 

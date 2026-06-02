@@ -69,7 +69,7 @@ export class ClaudeProvider implements LLMProvider {
         anthropicMessages.push({ role: 'assistant', content: response.content });
 
         const toolBlocks = response.content.filter((b) => b.type === 'tool_use') as Anthropic.ToolUseBlock[];
-        toolBlocks.forEach((b) => this.toolsUsed.push(b.name));
+        this.toolsUsed.push(...toolBlocks.map((b) => b.name));
 
         // Web search is server-executed by Anthropic — skip client-side execution for those
         const clientToolBlocks = toolBlocks.filter((b) => b.name !== 'web_search');
