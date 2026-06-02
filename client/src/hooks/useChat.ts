@@ -26,6 +26,12 @@ function loadFromStorage(): { sessionId: string; messages: ChatMessage[] } {
     if (raw) {
       const parsed = JSON.parse(raw);
       const age = Date.now() - (parsed.savedAt ?? 0);
+      const hasValidShape = typeof parsed.sessionId === 'string' && Array.isArray(parsed.messages);
+      if (!hasValidShape) {
+        console.warn('[session] invalid storage shape — starting fresh');
+        localStorage.removeItem(STORAGE_KEY);
+        return { sessionId: generateId(), messages: [] };
+      }
       if (age < SESSION_TTL_MS) return parsed;
       console.log('[session] expired after 15min — starting fresh');
       localStorage.removeItem(STORAGE_KEY);
@@ -41,6 +47,7 @@ export function useChat() {
   const stored = useRef(loadFromStorage());
   const [messages, setMessages] = useState<ChatMessage[]>(stored.current.messages);
   const [loading, setLoading] = useState(false);
+  const isLoadingRef = useRef(false);
   const [userContext, setUserContext] = useState<UserContext>({});
   const sessionId = useRef(stored.current.sessionId);
 
@@ -49,6 +56,9 @@ export function useChat() {
   }, [messages]);
 
   const send = useCallback(async (text: string) => {
+    if (!text.trim()) return;
+    if (isLoadingRef.current) return;
+    isLoadingRef.current = true;
     const userMsg: ChatMessage = { id: generateId(), role: 'user', content: text };
     console.log('[user]', text);
     setMessages((prev) => [...prev, userMsg]);
@@ -63,15 +73,16 @@ export function useChat() {
       console.log('[assistant]', { reply, sources });
       setMessages((prev) => [...prev, assistantMsg]);
     } catch (err) {
+      console.error('[error]', err);
       const errorMsg: ChatMessage = {
         id: generateId(),
         role: 'assistant',
-        content: err instanceof Error ? err.message : 'Something went wrong. Please try again.',
+        content: 'Something went wrong. Please refresh or try again later.',
         error: true,
       };
-      console.error('[error]', err);
       setMessages((prev) => [...prev, errorMsg]);
     } finally {
+      isLoadingRef.current = false;
       setLoading(false);
     }
   }, []);
