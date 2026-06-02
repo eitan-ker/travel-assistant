@@ -10,7 +10,7 @@ Call when:
 
 Do NOT call when:
 - User asks about culture, food experiences, or what it's like to travel there (use your knowledge)
-- Question is about a specific city rather than the country`,
+- Question is about a specific city or a place rather than the country`,
   input_schema: {
     type: 'object' as const,
     properties: {
