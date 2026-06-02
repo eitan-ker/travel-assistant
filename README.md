@@ -258,7 +258,7 @@ Server terminal shows structured color-coded logs with full pipeline visibility 
 | Country info | "Tell me about Japan" | get_country_info + search_travel_kb |
 | Current events | "What's up in Bali right now?" | get_weather + get_attractions + search_travel_kb + web_search |
 | Exchange rates | "How far does my budget go in Thailand?" | get_exchange_rate |
-| Ambiguous query | "Explore Paris" | → CLARIFY: specific question naming the options |
+| Ambiguous query | "Explore Springfield" | → CLARIFY: specific question naming the options |
 | Unsafe destination | "I want to go to North Korea" | Handled via knowledge — redirects with alternatives |
 
 ---
