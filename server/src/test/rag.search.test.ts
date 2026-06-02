@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { searchKb } from '../modules/rag/search.js';
-import * as loader from '../modules/rag/loader.js';
-import * as embedder from '../modules/rag/embedder.js';
+import { searchKb } from '../modules/rag/handler/search.js';
+import * as loader from '../modules/rag/handler/loader.js';
+import * as embedder from '../modules/rag/handler/embedder.js';
 import type { KBDoc } from '../modules/rag/types.js';
 
-vi.mock('../modules/rag/loader.js');
-vi.mock('../modules/rag/embedder.js');
+vi.mock('../modules/rag/handler/loader.js');
+vi.mock('../modules/rag/handler/embedder.js');
 
 function makeDoc(id: string, embedding: number[]): KBDoc {
   return {

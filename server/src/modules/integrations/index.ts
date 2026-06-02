@@ -1,8 +1,8 @@
-export { getWeather } from './weather.js';
-export { getCountryInfo } from './countries.js';
-export { getAttractions } from './attractions.js';
-export { getExchangeRate } from './exchangeRate.js';
-export type { WeatherData } from './weather.js';
-export type { CountryData } from './countries.js';
-export type { Attraction } from './attractions.js';
-export type { ExchangeRateData } from './exchangeRate.js';
+export { getWeather } from './apis/weather.js';
+export { getCountryInfo } from './apis/countries.js';
+export { getAttractions } from './apis/attractions.js';
+export { getExchangeRate } from './apis/exchangeRate.js';
+export type { WeatherData } from './apis/weather.js';
+export type { CountryData } from './apis/countries.js';
+export type { Attraction } from './apis/attractions.js';
+export type { ExchangeRateData } from './apis/exchangeRate.js';

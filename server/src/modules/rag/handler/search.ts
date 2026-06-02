@@ -1,6 +1,6 @@
 import { embed } from './embedder.js';
 import { getKb } from './loader.js';
-import type { KBDoc } from './types.js';
+import type { KBDoc } from '../types.js';
 
 function cosineSimilarity(a: number[], b: number[]): number {
   let dot = 0, magA = 0, magB = 0;

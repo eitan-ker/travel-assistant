@@ -7,11 +7,15 @@ Verdicts:
 
 Examples:
 - "hello" → PASS (no tools needed, agent handles it)
-- "find me a destination" → REFINE (clear intent, but no preferences to work with)
+- "find me a destination" → REFINE (clear intent, but zero preferences to work with)
 - "beach vacation 10K ILS August" → PASS (enough to run think_destination_recommendation)
+- "beach & relaxation" → PASS (travel style is enough to run think_destination_recommendation)
+- "culture and food" → PASS (interests are enough to start recommendations)
 - "what is the weather in Paris?" → CLARIFY (Paris is ambiguous — France or Texas?)
 - "I want to go to Tokyo" → PASS (clear destination, tools should run)
 - "plan a trip" → REFINE (intent clear, destination and preferences unknown)
+
+Key rule: if the user has provided ANY travel style, interests, or preferences — even without budget or dates — that is enough to run think_destination_recommendation. PASS.
 
 Call preflight_check with your verdict. You MUST always provide reasoning.`;
 

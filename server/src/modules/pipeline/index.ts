@@ -1,7 +1,7 @@
 import { DataSource, Role, SupervisorVerdict, Verdict } from '../../shared/enums.js';
 import { SYSTEM_PROMPT } from '../../prompts/system.js';
-import { runResponseSupervisor } from '../supervisor/response.js';
-import { runIntentSupervisor, runPreflightSupervisor } from '../supervisor/intent.js';
+import { runResponseSupervisor } from '../supervisor/supervisors/response.js';
+import { runPreflightSupervisor } from '../supervisor/supervisors/intent.js';
 import { getLLMProvider } from '../llm/factory.js';
 import { ClaudeProvider } from '../llm/claude.js';
 import { log } from '../../utils/logger.js';
@@ -64,7 +64,13 @@ export async function runPipeline(
   // ── Pre-flight check — before any tools fire ─────────────────────────────
   let disableToolsForInitialRun = false;
   if (supervisorEnabled) {
-    const sessionContext = formatUserContext(existingContext) ?? undefined;
+    const lastAssistantMessage = [...history].reverse().find((m) => m.role === Role.Assistant)?.content;
+    const userContextBlock = formatUserContext(existingContext);
+    const sessionContext = [
+      userContextBlock,
+      lastAssistantMessage ? `Last assistant message: "${lastAssistantMessage.slice(0, 300)}"` : '',
+    ].filter(Boolean).join('\n') || undefined;
+
     const preflightResult = await runPreflightSupervisor(userMessage, sessionContext);
     log.supervisor('Pre-flight Supervisor', preflightResult.verdict, preflightResult.reasoning, preflightResult.feedback);
 
@@ -83,7 +89,9 @@ export async function runPipeline(
 
     if (preflightResult.verdict === Verdict.Refine) {
       disableToolsForInitialRun = true;
-      log.supervisor('Pre-flight Supervisor', Verdict.Refine, 'Not enough context — running agent without tools');
+      supervisors.push({ name: 'Pre-flight Supervisor', verdict: SupervisorVerdict.Refined });
+    } else {
+      supervisors.push({ name: 'Pre-flight Supervisor', verdict: SupervisorVerdict.Pass });
     }
   }
 
@@ -120,71 +128,13 @@ export async function runPipeline(
     .map((m) => `${m.role}: ${m.content.slice(0, 150)}`)
     .join('\n');
 
-  // ── Intent + Response Supervisors — run in parallel (optimistic) ─────────
-  // Skip post-flight Intent Supervisor when pre-flight intentionally disabled tools
-  const [intentResult, optimisticResponseResult] = await Promise.all([
-    disableToolsForInitialRun
-      ? Promise.resolve({ verdict: Verdict.Pass, reasoning: 'Pre-flight disabled tools intentionally — skipping post-flight intent check', feedback: undefined, question: undefined })
-      : runIntentSupervisor(userMessage, [...allTools], formatUserContext(existingContext) ?? undefined),
-    runResponseSupervisor(
-      userMessage,
-      reply,
-      recentHistory,
-      [...allSources].filter((s) => LIVE_SOURCES.has(s)),
-    ),
-  ]);
-
-  log.supervisor('Intent Supervisor', intentResult.verdict, intentResult.reasoning, intentResult.feedback);
-
-  // ── Intent Supervisor CLARIFY — short-circuit ────────────────────────────
-  if (intentResult.verdict === Verdict.Clarify) {
-    const userContext = await userContextPromise;
-    log.pipelineEnd([]);
-    return {
-      reply: intentResult.question ?? 'Could you clarify your question?',
-      sources: [],
-      toolsUsed: [],
-      supervisors: [{ name: 'Intent Supervisor', verdict: SupervisorVerdict.Clarify }],
-      userContext,
-      isClarification: true,
-    };
-  }
-
-  // ── Intent Supervisor retry ──────────────────────────────────────────────
-  if (intentResult.verdict === Verdict.Refine) {
-    log.supervisorRetry('Intent Supervisor');
-
-    reply = await provider.chat([
-      ...messages,
-      { role: Role.Assistant, content: reply },
-      {
-        role: Role.User,
-        content: `[TOOL SELECTION REVIEW: ${intentResult.feedback}\n\nPlease re-answer from scratch, calling the appropriate tools first.]`,
-      },
-    ]);
-
-    provider.sources.forEach((s) => allSources.add(s));
-    provider.toolsUsed.forEach((t) => allTools.add(t));
-    supervisors.push({ name: 'Intent Supervisor', verdict: SupervisorVerdict.Refined });
-    log.travelAgent(reply, provider.toolsUsed, provider.sources);
-
-    // Check if the retry triggered a Data Supervisor CLARIFY
-    if (provider.clarification) {
-      log.supervisor('Data Supervisor', Verdict.Clarify, 'Ambiguous entity — asking user for clarification');
-      const userContext = await userContextPromise;
-      log.pipelineEnd([]);
-      return {
-        reply: provider.clarification,
-        sources: [],
-        toolsUsed: [],
-        supervisors: [...supervisors, { name: 'Data Supervisor', verdict: SupervisorVerdict.Clarify }],
-        userContext,
-        isClarification: true,
-      };
-    }
-  } else {
-    supervisors.push({ name: 'Intent Supervisor', verdict: SupervisorVerdict.Pass });
-  }
+  // ── Response Supervisor ──────────────────────────────────────────────────
+  const optimisticResponseResult = await runResponseSupervisor(
+    userMessage,
+    reply,
+    recentHistory,
+    [...allSources].filter((s) => LIVE_SOURCES.has(s)),
+  );
 
   // ── Data Supervisor — runs inside executor.ts per tool call ─────────────
   const hasLiveData = [...allSources].some((s) => LIVE_SOURCES.has(s));
@@ -195,11 +145,7 @@ export async function runPipeline(
     supervisors.push({ name: 'Data Supervisor', verdict: SupervisorVerdict.Skipped });
   }
 
-  // ── Response Supervisor ──────────────────────────────────────────────────
-  const liveDataSources = [...allSources].filter((s) => LIVE_SOURCES.has(s));
-  const responseResult = intentResult.verdict === Verdict.Refine
-    ? await runResponseSupervisor(userMessage, reply, recentHistory, liveDataSources)
-    : optimisticResponseResult;
+  const responseResult = optimisticResponseResult;
 
   log.supervisor('Response Supervisor', responseResult.verdict, responseResult.reasoning, responseResult.feedback);
 

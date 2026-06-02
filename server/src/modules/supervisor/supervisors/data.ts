@@ -1,10 +1,10 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { Verdict, DataType } from '../../shared/enums.js';
-import type { WeatherData } from '../integrations/weather.js';
-import type { CountryData } from '../integrations/countries.js';
-import { runWithRetry, type SupervisorResult } from './types.js';
-import { isSupervisorToolInput, parseVerdict } from './guards.js';
-import { DATA_SUPERVISOR_PROMPT } from '../../prompts/dataSupervisor.js';
+import { Verdict, DataType } from '../../../shared/enums.js';
+import type { WeatherData } from '../../integrations/apis/weather.js';
+import type { CountryData } from '../../integrations/apis/countries.js';
+import { runWithRetry, type SupervisorResult } from '../types.js';
+import { isSupervisorToolInput, parseVerdict } from '../guards.js';
+import { DATA_SUPERVISOR_PROMPT } from '../../../prompts/dataSupervisor.js';
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
