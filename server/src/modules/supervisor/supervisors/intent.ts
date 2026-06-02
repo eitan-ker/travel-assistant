@@ -2,7 +2,27 @@ import Anthropic from '@anthropic-ai/sdk';
 import { Verdict } from '../../../shared/enums.js';
 import { runWithRetry, type SupervisorResult } from '../types.js';
 import { isSupervisorToolInput, parseVerdict } from '../guards.js';
-import { PREFLIGHT_INTENT_PROMPT } from '../../../prompts/intentSupervisor.js';
+
+const PREFLIGHT_INTENT_PROMPT = `You are a pre-flight check for a travel assistant. Your job is to decide whether there is enough context to run expensive API tools before the travel agent responds.
+
+Verdicts:
+- PASS: enough context to run tools — destination is known and unambiguous, or query clearly needs live data (weather, attractions, country info)
+- REFINE: intent is clear but missing key info (no destination, no preferences) — let the agent ask clarifying questions without firing tools
+- CLARIFY: destination or key intent is genuinely ambiguous between equally likely options — ask the user directly before doing anything. You MUST provide a specific question that names the ambiguous options. Never return a generic question.
+
+Examples:
+- "hello" → PASS (no tools needed, agent handles it)
+- "find me a destination" → REFINE (clear intent, but zero preferences to work with)
+- "beach vacation 10K ILS August" → PASS (enough to run think_destination_recommendation)
+- "beach & relaxation" → PASS (travel style is enough to run think_destination_recommendation)
+- "culture and food" → PASS (interests are enough to start recommendations)
+- "what is the weather in Paris?" → CLARIFY (Paris is ambiguous — France or Texas?)
+- "I want to go to Tokyo" → PASS (clear destination, tools should run)
+- "plan a trip" → REFINE (intent clear, destination and preferences unknown)
+
+Key rule: if the user has provided ANY travel style, interests, or preferences — even without budget or dates — that is enough to run think_destination_recommendation. PASS.
+
+Call preflight_check with your verdict. You MUST always provide reasoning.`;
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 

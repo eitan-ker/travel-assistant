@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { getCountryInfo } from '../modules/integrations/apis/countries.js';
+import { getCountryInfo } from '../modules/api/apis/countries.js';
 
 const mockFetch = vi.fn();
 vi.stubGlobal('fetch', mockFetch);

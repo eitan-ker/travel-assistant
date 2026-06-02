@@ -1,8 +1,8 @@
 import { DataSource, DataType, Verdict } from '../../shared/enums.js';
-import { getWeather } from '../integrations/apis/weather.js';
-import { getCountryInfo } from '../integrations/apis/countries.js';
-import { getAttractions } from '../integrations/apis/attractions.js';
-import { getExchangeRate } from '../integrations/apis/exchangeRate.js';
+import { getWeather } from '../api/apis/weather.js';
+import { getCountryInfo } from '../api/apis/countries.js';
+import { getAttractions } from '../api/apis/attractions.js';
+import { getExchangeRate } from '../api/apis/exchangeRate.js';
 import { searchKb } from '../rag/index.js';
 import { runDataSupervisor } from '../supervisor/supervisors/data.js';
 import { log } from '../../utils/logger.js';

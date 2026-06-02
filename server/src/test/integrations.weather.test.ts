@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { getWeather } from '../modules/integrations/apis/weather.js';
+import { getWeather } from '../modules/api/apis/weather.js';
 
 const mockFetch = vi.fn();
 vi.stubGlobal('fetch', mockFetch);

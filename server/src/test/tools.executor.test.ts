@@ -2,16 +2,16 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { executeTool } from '../modules/tools/executor.js';
 import { DataSource, Verdict } from '../shared/enums.js';
 
-vi.mock('../modules/integrations/apis/weather.js', () => ({
+vi.mock('../modules/api/apis/weather.js', () => ({
   getWeather: vi.fn(),
 }));
-vi.mock('../modules/integrations/apis/countries.js', () => ({
+vi.mock('../modules/api/apis/countries.js', () => ({
   getCountryInfo: vi.fn(),
 }));
-vi.mock('../modules/integrations/apis/attractions.js', () => ({
+vi.mock('../modules/api/apis/attractions.js', () => ({
   getAttractions: vi.fn(),
 }));
-vi.mock('../modules/integrations/apis/exchangeRate.js', () => ({
+vi.mock('../modules/api/apis/exchangeRate.js', () => ({
   getExchangeRate: vi.fn(),
 }));
 vi.mock('../modules/rag/index.js', () => ({
@@ -24,10 +24,10 @@ vi.mock('../utils/logger.js', () => ({
   log: { toolCall: vi.fn() },
 }));
 
-import { getWeather } from '../modules/integrations/apis/weather.js';
-import { getCountryInfo } from '../modules/integrations/apis/countries.js';
-import { getAttractions } from '../modules/integrations/apis/attractions.js';
-import { getExchangeRate } from '../modules/integrations/apis/exchangeRate.js';
+import { getWeather } from '../modules/api/apis/weather.js';
+import { getCountryInfo } from '../modules/api/apis/countries.js';
+import { getAttractions } from '../modules/api/apis/attractions.js';
+import { getExchangeRate } from '../modules/api/apis/exchangeRate.js';
 import { searchKb } from '../modules/rag/index.js';
 import { runDataSupervisor } from '../modules/supervisor/supervisors/data.js';
 
