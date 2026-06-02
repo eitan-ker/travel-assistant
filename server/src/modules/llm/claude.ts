@@ -26,7 +26,7 @@ export class ClaudeProvider implements LLMProvider {
     const conversation = messages.filter((m) => m.role !== 'system');
 
     const anthropicMessages: Anthropic.MessageParam[] = conversation.map((m) => ({
-      role: m.role as 'user' | 'assistant',
+      role: m.role as Anthropic.MessageParam['role'],
       content: m.content,
     }));
 

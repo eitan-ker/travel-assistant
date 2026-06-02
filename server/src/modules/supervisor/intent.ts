@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { Verdict } from '../../shared/enums.js';
 import { runWithRetry, type SupervisorResult } from './types.js';
+import { isSupervisorToolInput, parseVerdict } from './guards.js';
 import { INTENT_SUPERVISOR_PROMPT } from '../../prompts/intentSupervisor.js';
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -33,12 +34,6 @@ const TOOL: Anthropic.Tool = {
   },
 };
 
-interface ToolInput {
-  verdict: string;
-  reasoning?: string;
-  feedback?: string;
-  question?: string;
-}
 
 async function call(userMessage: string, toolsUsed: string[], sessionContext?: string): Promise<SupervisorResult> {
   const toolsSummary = toolsUsed.length > 0
@@ -66,12 +61,13 @@ async function call(userMessage: string, toolsUsed: string[], sessionContext?: s
   const toolUse = response.content.find((b) => b.type === 'tool_use');
   if (!toolUse || toolUse.type !== 'tool_use') return { verdict: Verdict.Pass, reasoning: 'No tool use response' };
 
-  const input = toolUse.input as ToolInput;
+  if (!isSupervisorToolInput(toolUse.input)) return { verdict: Verdict.Pass, reasoning: 'Unexpected tool input shape' };
+
   return {
-    verdict: input.verdict as Verdict,
-    reasoning: input.reasoning ?? '',
-    feedback: input.feedback,
-    question: input.question,
+    verdict: parseVerdict(toolUse.input.verdict),
+    reasoning: toolUse.input.reasoning ?? '',
+    feedback: toolUse.input.feedback,
+    question: toolUse.input.question,
   };
 }
 

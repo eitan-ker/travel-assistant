@@ -47,7 +47,9 @@ export async function extractUserContext(userMessage: string, existing: UserCont
   const toolUse = response.content.find((b) => b.type === 'tool_use');
   if (!toolUse || toolUse.type !== 'tool_use') return existing;
 
-  const extracted = toolUse.input as Partial<UserContext>;
+  const raw = toolUse.input;
+  if (typeof raw !== 'object' || raw === null) return existing;
+  const extracted = raw as Partial<UserContext>;
 
   return {
     destination: extracted.destination ?? existing.destination,

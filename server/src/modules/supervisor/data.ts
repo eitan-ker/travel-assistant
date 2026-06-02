@@ -3,6 +3,7 @@ import { Verdict, DataType } from '../../shared/enums.js';
 import type { WeatherData } from '../integrations/weather.js';
 import type { CountryData } from '../integrations/countries.js';
 import { runWithRetry, type SupervisorResult } from './types.js';
+import { isSupervisorToolInput, parseVerdict } from './guards.js';
 import { DATA_SUPERVISOR_PROMPT } from '../../prompts/dataSupervisor.js';
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -35,12 +36,6 @@ const TOOL: Anthropic.Tool = {
   },
 };
 
-interface ToolInput {
-  verdict: string;
-  reasoning?: string;
-  feedback?: string;
-  question?: string;
-}
 
 function buildDataDescription(data: WeatherData | CountryData | string, dataType: DataType): string {
   if (typeof data === 'string') return data;
@@ -76,12 +71,13 @@ async function call(
   const toolUse = response.content.find((b) => b.type === 'tool_use');
   if (!toolUse || toolUse.type !== 'tool_use') return { verdict: Verdict.Pass, reasoning: 'No tool use response' };
 
-  const input = toolUse.input as ToolInput;
+  if (!isSupervisorToolInput(toolUse.input)) return { verdict: Verdict.Pass, reasoning: 'Unexpected tool input shape' };
+
   return {
-    verdict: input.verdict as Verdict,
-    reasoning: input.reasoning ?? '',
-    feedback: input.feedback,
-    question: input.question,
+    verdict: parseVerdict(toolUse.input.verdict),
+    reasoning: toolUse.input.reasoning ?? '',
+    feedback: toolUse.input.feedback,
+    question: toolUse.input.question,
   };
 }
 
