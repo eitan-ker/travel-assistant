@@ -25,7 +25,9 @@ export async function getCountryInfo(country: string): Promise<CountryData> {
     throw new Error(`Countries API error: ${response.status}`);
   }
 
-  const [data] = (await response.json()) as RestCountryResponse[];
+  const results = (await response.json()) as RestCountryResponse[];
+  if (!results.length) throw new Error(`Country not found: "${country}"`);
+  const [data] = results;
   return {
     name: data.name.common,
     capital: data.capital?.[0] ?? 'N/A',

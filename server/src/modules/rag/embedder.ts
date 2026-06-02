@@ -21,5 +21,6 @@ export async function embed(text: string): Promise<number[]> {
   }
 
   const data = (await response.json()) as VoyageResponse;
+  if (!data.data?.length) throw new Error('VoyageAI returned empty embeddings');
   return data.data[0].embedding;
 }
