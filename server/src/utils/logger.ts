@@ -32,16 +32,14 @@ export const log = {
 
   toolCall(name: string, input: Record<string, string>) {
     console.log(`\n  >> tool: ${PINK}${name}${RESET}`);
-    Object.entries(input).forEach(([k, v]) => {
-      const val = String(v).slice(0, 80) + (String(v).length > 80 ? '...' : '');
-      console.log(`     ${k}: ${PINK}${val}${RESET}`);
-    });
+    Object.entries(input)
+      .map(([k, v]) => `     ${k}: ${PINK}${String(v).slice(0, 80)}${String(v).length > 80 ? '...' : ''}${RESET}`)
+      .forEach((line) => console.log(line));
   },
 
   supervisor(name: string, verdict: string, reasoning: string, feedback?: string) {
-    const tag = verdict === 'PASS' ? 'PASS' : verdict === 'REFINE' ? 'REFINE' : verdict;
     console.log(label(name.toUpperCase()));
-    console.log(field('Verdict', tag));
+    console.log(field('Verdict', verdict));
     console.log(field('Reasoning', reasoning));
     if (feedback) console.log(field('Feedback', feedback));
   },
