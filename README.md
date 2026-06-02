@@ -169,65 +169,6 @@ Two layers of concurrency eliminate serial API bottlenecks:
 
 ---
 
-## Installation
-
-### Prerequisites
-
-| Requirement | Notes |
-|---|---|
-| Node.js 18+ | Download from [nodejs.org](https://nodejs.org) |
-| Anthropic API key | [console.anthropic.com](https://console.anthropic.com) |
-| OpenWeatherMap API key | [openweathermap.org/api](https://openweathermap.org/api) — free tier |
-| OpenTripMap API key | [opentripmap.org](https://opentripmap.org) — free tier |
-| VoyageAI API key | [voyageai.com](https://www.voyageai.com) — free tier |
-
-### Step 1 — Extract the zip
-
-Extract the zip file. You should see a folder named `travel-assistant` containing `server/`, `client/`, `transcripts/`, and this README.
-
-### Step 2 — Install dependencies
-
-Open a terminal inside the `travel-assistant` folder and run:
-
-```bash
-# Install server dependencies
-cd server && npm install
-
-# Install client dependencies
-cd ../client && npm install
-```
-
-### Step 3 — Configure environment
-
-The `.env` file is included in the zip inside the `server/` folder — all API keys are already set. No configuration needed.
-
-### Step 4 — Run
-
-You need two terminal windows open at the same time:
-
-```bash
-# Terminal 1 — start the server (from the travel-assistant folder)
-cd server && npm run dev
-
-# Terminal 2 — start the client (from the travel-assistant folder)
-cd client && npm run dev
-```
-
-Once both are running, open your browser and go to:
-
-**[http://localhost:5173](http://localhost:5173)**
-
-> The RAG knowledge base (`server/data/kb.jsonl`) is pre-built and included in the zip — no additional setup needed.
-
-### Step 4 — Try It
-
-Sample queries to explore the system:
-- `"Where should I go in August for beaches? I'm from Israel with 10K ILS"`
-- `"What to pack for a week in Iceland in winter?"`
-- `"Plan a 2-week trip to Paris from Tel Aviv, mid-range budget"`
-- `"What's up in Bali right now?"`
-- `"Best local food spots in Tokyo?"`
-
 ---
 
 ## UI Features
@@ -324,3 +265,64 @@ cd server && npm test
 # Client tests (29 tests)
 cd client && npm test
 ```
+
+---
+
+## Installation
+
+### Prerequisites
+
+| Requirement | Notes |
+|---|---|
+| Node.js 18+ | Download from [nodejs.org](https://nodejs.org) |
+| Anthropic API key | [console.anthropic.com](https://console.anthropic.com) |
+| OpenWeatherMap API key | [openweathermap.org/api](https://openweathermap.org/api) — free tier |
+| OpenTripMap API key | [opentripmap.org](https://opentripmap.org) — free tier |
+| VoyageAI API key | [voyageai.com](https://www.voyageai.com) — free tier |
+
+### Step 1 — Extract the zip
+
+Extract the zip file. You should see a folder named `travel-assistant` containing `server/`, `client/`, `transcripts/`, and this README.
+
+### Step 2 — Install dependencies
+
+Open a terminal inside the `travel-assistant` folder and run:
+
+```bash
+# Install server dependencies
+cd server && npm install
+
+# Install client dependencies
+cd ../client && npm install
+```
+
+### Step 3 — Configure environment
+
+The `.env` file is included in the zip inside the `server/` folder — all API keys are already set. No configuration needed.
+
+### Step 4 — Run
+
+You need two terminal windows open at the same time:
+
+```bash
+# Terminal 1 — start the server (from the travel-assistant folder)
+cd server && npm run dev
+
+# Terminal 2 — start the client (from the travel-assistant folder)
+cd client && npm run dev
+```
+
+Once both are running, open your browser and go to:
+
+**[http://localhost:5173](http://localhost:5173)**
+
+> The RAG knowledge base (`server/data/kb.jsonl`) is pre-built and included in the zip — no additional setup needed.
+
+### Step 4 — Try It
+
+Sample queries to explore the system:
+- `"Where should I go in August for beaches? I'm from Israel with 10K ILS"`
+- `"What to pack for a week in Iceland in winter?"`
+- `"Plan a 2-week trip to Paris from Tel Aviv, mid-range budget"`
+- `"What's up in Bali right now?"`
+- `"Best local food spots in Tokyo?"`
