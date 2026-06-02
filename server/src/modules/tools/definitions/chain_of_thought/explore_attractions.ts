@@ -10,9 +10,11 @@ Call this when the user wants to discover what to see and do — not when they a
 
 Required UserContext fields — ask for these if missing before proceeding:
 - interests: what kind of travel they are looking for (beaches, culture, nightlife, adventure, food, nature, etc.)
+- traveler_group: solo vs family vs couple shapes which attractions are suitable
+- passport: affects which locations are accessible and entry requirements
 
 Optional UserContext fields — use if available, do not ask if missing:
-- origin, passport, traveler_group, travel_style, constraints, budget, duration, notes
+- origin, travel_style, constraints, budget, duration, notes
 
 After completing this reasoning:
 1. Call get_attractions for each of the 3 locations

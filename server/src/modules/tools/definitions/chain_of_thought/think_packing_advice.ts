@@ -8,9 +8,16 @@ Purpose: determine what this specific traveler needs to bring — considering th
 
 Required UserContext fields — ask for these if missing before proceeding:
 - destination: packing advice without a destination is not possible
+- origin: affects power adapter type, climate transition (hot to cold), and what to bring from home vs buy there
+- passport: entry requirements may restrict certain items; nationality affects what to prepare for customs
+- traveler_group: solo vs family vs couple changes luggage strategy and what to share
+- interests: activities determine what gear is essential (hiking vs beach vs nightlife vs city)
+- travel_style: budget affects bring-vs-buy decisions; luxury vs backpacker changes luggage type entirely
+- budget: determines whether to buy items at destination or bring from home
+- duration: longer trips require more clothing or laundry planning; affects how much to pack
 
 Optional UserContext fields — use if available, do not ask if missing:
-- origin, passport, traveler_group, interests, travel_style, constraints, budget, duration, notes
+- constraints, notes
 
 After completing this reasoning:
 1. Call get_weather for current conditions at the destination

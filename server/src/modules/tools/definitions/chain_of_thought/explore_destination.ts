@@ -11,7 +11,7 @@ Required UserContext fields — ask for these if missing before proceeding:
 - passport: nationality affects which destinations are accessible visa-free — critical for filtering recommendations
 
 Optional UserContext fields — use if available, do not ask if missing:
-- origin, passport, traveler_group, travel_style, constraints, budget, duration, notes
+- origin, traveler_group, travel_style, constraints, budget, duration, notes
 
 After completing this reasoning:
 1. Call get_country_info, get_weather, AND get_attractions for EACH of the 3 destinations
