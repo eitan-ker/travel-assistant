@@ -154,7 +154,7 @@ export async function runPipeline(
       { role: Role.Assistant, content: reply },
       {
         role: Role.User,
-        content: `[REVISION NEEDED: ${responseResult.feedback}\n\nPlease rewrite your response addressing the above. Do NOT start with an apology or say the previous response was wrong — just provide the improved answer directly.]`,
+        content: `[REVISION NEEDED: ${responseResult.feedback}\n\nYou already have all the data from the previous tool calls — do NOT ask the user for more information and do NOT call any tools. Rewrite your previous response directly, fixing only the issues described above. Do not start over, do not apologize.]`,
       },
     ], true);
 
