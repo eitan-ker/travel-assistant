@@ -44,6 +44,21 @@ export async function runPipeline(
 
   log.travelAgent(reply, provider.toolsUsed, provider.sources);
 
+  // ── Data Supervisor CLARIFY — short-circuit before anything else ─────────
+  if (provider.clarification) {
+    log.supervisor('Data Supervisor', 'CLARIFY', 'Ambiguous entity — asking user for clarification');
+    const userContext = await userContextPromise;
+    log.pipelineEnd([]);
+    return {
+      reply: provider.clarification,
+      sources: [],
+      toolsUsed: [],
+      supervisors: [{ name: 'Data Supervisor', verdict: 'CLARIFY' as const }],
+      userContext,
+      isClarification: true,
+    };
+  }
+
   if (!supervisorEnabled) {
     const userContext = await userContextPromise;
     log.pipelineEnd([...allSources]);
@@ -58,7 +73,7 @@ export async function runPipeline(
 
   // ── Intent + Response Supervisors — run in parallel (optimistic) ─────────
   const [intentResult, optimisticResponseResult] = await Promise.all([
-    runIntentSupervisor(userMessage, [...allTools]),
+    runIntentSupervisor(userMessage, [...allTools], formatUserContext(existingContext) ?? undefined),
     runResponseSupervisor(
       userMessage,
       reply,
@@ -68,6 +83,20 @@ export async function runPipeline(
   ]);
 
   log.supervisor('Intent Supervisor', intentResult.verdict, intentResult.reasoning, intentResult.feedback);
+
+  // ── Intent Supervisor CLARIFY — short-circuit ────────────────────────────
+  if (intentResult.verdict === 'CLARIFY') {
+    const userContext = await userContextPromise;
+    log.pipelineEnd([]);
+    return {
+      reply: intentResult.question ?? 'Could you clarify your question?',
+      sources: [],
+      toolsUsed: [],
+      supervisors: [{ name: 'Intent Supervisor', verdict: 'CLARIFY' as const }],
+      userContext,
+      isClarification: true,
+    };
+  }
 
   // ── Intent Supervisor retry ──────────────────────────────────────────────
   if (intentResult.verdict === 'REFINE') {
@@ -86,6 +115,21 @@ export async function runPipeline(
     provider.toolsUsed.forEach((t) => allTools.add(t));
     supervisors.push({ name: 'Intent Supervisor', verdict: 'REFINED' });
     log.travelAgent(reply, provider.toolsUsed, provider.sources);
+
+    // Check if the retry triggered a Data Supervisor CLARIFY
+    if (provider.clarification) {
+      log.supervisor('Data Supervisor', 'CLARIFY', 'Ambiguous entity — asking user for clarification');
+      const userContext = await userContextPromise;
+      log.pipelineEnd([]);
+      return {
+        reply: provider.clarification,
+        sources: [],
+        toolsUsed: [],
+        supervisors: [...supervisors, { name: 'Data Supervisor', verdict: 'CLARIFY' as const }],
+        userContext,
+        isClarification: true,
+      };
+    }
   } else {
     supervisors.push({ name: 'Intent Supervisor', verdict: 'PASS' });
   }
@@ -115,9 +159,9 @@ export async function runPipeline(
       { role: 'assistant', content: reply },
       {
         role: 'user',
-        content: `[QUALITY REVIEW FAILED: ${responseResult.feedback}\n\nIMPORTANT: You MUST provide a direct answer now. Do NOT ask clarifying questions without first giving a substantive response.]`,
+        content: `[REVISION NEEDED: ${responseResult.feedback}\n\nPlease rewrite your response addressing the above. Do NOT start with an apology or say the previous response was wrong — just provide the improved answer directly.]`,
       },
-    ]);
+    ], true); // disableTools — avoid re-running expensive tool calls on retry
 
     provider.sources.forEach((s) => allSources.add(s));
     provider.toolsUsed.forEach((t) => allTools.add(t));

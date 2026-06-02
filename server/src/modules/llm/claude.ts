@@ -8,6 +8,7 @@ export class ClaudeProvider implements LLMProvider {
   private readonly model: string;
   public sources: string[] = [];
   public toolsUsed: string[] = [];
+  public clarification: string | null = null;
 
   constructor() {
     if (!process.env.ANTHROPIC_API_KEY) throw new Error('ANTHROPIC_API_KEY is not set');
@@ -15,9 +16,10 @@ export class ClaudeProvider implements LLMProvider {
     this.model = process.env.CLAUDE_MODEL ?? 'claude-haiku-4-5-20251001';
   }
 
-  async chat(messages: Message[]): Promise<string> {
+  async chat(messages: Message[], disableTools = false): Promise<string> {
     this.sources = ['Claude'];
     this.toolsUsed = [];
+    this.clarification = null;
 
     const system = messages.find((m) => m.role === 'system')?.content;
     const conversation = messages.filter((m) => m.role !== 'system');
@@ -32,8 +34,12 @@ export class ClaudeProvider implements LLMProvider {
         model: this.model,
         max_tokens: 8096,
         ...(system ? { system } : {}),
-        tools: [...TRAVEL_TOOLS, { type: 'web_search_20250305' as const, name: 'web_search' as const }],
-        tool_choice: { type: 'auto' },
+        ...(disableTools
+          ? {}
+          : {
+              tools: [...TRAVEL_TOOLS, { type: 'web_search_20250305' as const, name: 'web_search' as const }],
+              tool_choice: { type: 'auto' },
+            }),
         messages: anthropicMessages,
       });
 
@@ -46,8 +52,16 @@ export class ClaudeProvider implements LLMProvider {
         if (response.stop_reason === 'max_tokens') {
           console.warn('[claude] max_tokens hit — response was truncated');
         }
-        const textBlock = response.content.find((b) => b.type === 'text');
-        return textBlock?.type === 'text' ? textBlock.text : '';
+        // Concatenate all text blocks — web search interleaves result blocks between text blocks
+        const text = response.content
+          .filter((b) => b.type === 'text')
+          .map((b) => (b.type === 'text' ? b.text : ''))
+          .join('');
+        // Strip any leaked function_calls XML (can appear when tools are disabled on retry)
+        return text
+          .replace(/<function_calls>[\s\S]*?<\/function_calls>/g, '')
+          .replace(/<\/?function_calls>/g, '')
+          .trim();
       }
 
       if (response.stop_reason === 'tool_use') {
@@ -72,7 +86,8 @@ export class ClaudeProvider implements LLMProvider {
             try {
               const result = await executeTool(block.name, block.input as Record<string, string>);
               if (result.source) this.sources.push(result.source);
-              return { type: 'tool_result', tool_use_id: block.id, content: result.content };
+              if (result.clarification) this.clarification = result.clarification;
+              return { type: 'tool_result', tool_use_id: block.id, content: result.content || 'Data unavailable — use your general knowledge.' };
             } catch (err) {
               const msg = err instanceof Error ? err.message : 'Tool execution failed';
               console.error(`[tool-error] ${block.name}: ${msg}`);

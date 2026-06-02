@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import type { WeatherData } from '../integrations/weather.js';
 import type { CountryData } from '../integrations/countries.js';
-import { runWithRetry, type SupervisorResult } from './types.js';
+import { runWithRetry, type SupervisorResult, type Verdict } from './types.js';
 import { DATA_SUPERVISOR_PROMPT } from '../../prompts/dataSupervisor.js';
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -14,8 +14,8 @@ const TOOL: Anthropic.Tool = {
     properties: {
       verdict: {
         type: 'string',
-        enum: ['PASS', 'REFINE'],
-        description: 'PASS if data is relevant and correctly matched. REFINE if wrong entity was fetched or data is irrelevant.',
+        enum: ['PASS', 'REFINE', 'CLARIFY'],
+        description: 'PASS if data matches. REFINE if clearly wrong but obvious fix. CLARIFY if the user query is ambiguous and you need them to specify (e.g. which city they meant).',
       },
       reasoning: {
         type: 'string',
@@ -24,6 +24,10 @@ const TOOL: Anthropic.Tool = {
       feedback: {
         type: 'string',
         description: 'Required when verdict is REFINE. Explain what is wrong and what should be fetched instead.',
+      },
+      question: {
+        type: 'string',
+        description: 'Required when verdict is CLARIFY. Short, direct question to ask the user. Example: "Did you mean Netanya, Israel or Netanya, Illinois?"',
       },
     },
     required: ['verdict', 'reasoning'],
@@ -38,7 +42,7 @@ async function call(
   const dataDescription = typeof data === 'string'
     ? data
     : dataType === 'weather'
-      ? `Weather data fetched for: ${(data as WeatherData).city}, ${(data as WeatherData).country}`
+      ? `Weather data fetched for: ${(data as WeatherData).city} (ISO country code: ${(data as WeatherData).country})`
       : `Country data fetched for: ${(data as CountryData).name} (${(data as CountryData).region})`;
 
   const response = await client.messages.create({
@@ -58,8 +62,8 @@ async function call(
   const toolUse = response.content.find((b) => b.type === 'tool_use');
   if (!toolUse || toolUse.type !== 'tool_use') return { verdict: 'PASS', reasoning: 'No tool use response' };
 
-  const input = toolUse.input as { verdict: string; reasoning?: string; feedback?: string };
-  return { verdict: input.verdict as 'PASS' | 'REFINE', reasoning: input.reasoning ?? '', feedback: input.feedback };
+  const input = toolUse.input as { verdict: string; reasoning?: string; feedback?: string; question?: string };
+  return { verdict: input.verdict as Verdict, reasoning: input.reasoning ?? '', feedback: input.feedback, question: input.question };
 }
 
 export function runDataSupervisor(

@@ -20,7 +20,9 @@ export async function getWeather(city: string): Promise<WeatherData> {
   const key = process.env.OPENWEATHER_API_KEY;
   if (!key) throw new Error('OPENWEATHER_API_KEY is not set');
 
-  const url = `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(city)}&appid=${key}&units=metric`;
+  // Strip country suffix if present (e.g. "Netanya, Israel" → "Netanya")
+  const cityName = city.split(',')[0].trim();
+  const url = `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(cityName)}&appid=${key}&units=metric`;
   const response = await fetch(url);
 
   if (!response.ok) {

@@ -11,5 +11,5 @@ Important: <cite> tags in the response are real web search citations — do NOT 
 If NONE of these issues are present → PASS.
 If ANY issue is present → REFINE with specific feedback on what to fix.
 
-Be strict about hallucinated prices and visa claims. Be lenient on everything else.
+Any value explicitly labeled as an estimate — with phrases like "estimated", "approximate", "verify before booking", or "based on general knowledge" — is intentional and correct. Do NOT flag labeled estimates as hallucinations regardless of what they refer to. Only flag values that are stated as verified facts without any qualification.
 Call review_response with your verdict. You MUST always provide reasoning.`;

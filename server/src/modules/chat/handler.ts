@@ -15,7 +15,7 @@ export async function handleChat(req: Request, res: Response): Promise<void> {
   session.messages.push({ role: 'user', content: message });
 
   try {
-    const { reply, sources, toolsUsed, supervisors, userContext } = await runPipeline(
+    const { reply, sources, toolsUsed, supervisors, userContext, isClarification } = await runPipeline(
       session.messages,
       message,
       session.userContext,
@@ -25,7 +25,7 @@ export async function handleChat(req: Request, res: Response): Promise<void> {
     session.userContext = userContext;
     sessionStore.set(sessionId, session);
 
-    res.json({ reply, sessionId, sources, toolsUsed, supervisors, userContext });
+    res.json({ reply, sessionId, sources, toolsUsed, supervisors, userContext, isClarification });
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Request failed';
     res.status(500).json({ error: msg });

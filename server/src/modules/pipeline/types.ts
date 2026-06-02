@@ -1,6 +1,6 @@
 export interface SupervisorLog {
   name: string;
-  verdict: 'PASS' | 'REFINED' | 'SKIPPED';
+  verdict: 'PASS' | 'REFINED' | 'SKIPPED' | 'CLARIFY';
 }
 
 export interface PipelineResult {
@@ -9,4 +9,5 @@ export interface PipelineResult {
   toolsUsed: string[];
   supervisors: SupervisorLog[];
   userContext: import('../session/types.js').UserContext;
+  isClarification?: boolean;
 }

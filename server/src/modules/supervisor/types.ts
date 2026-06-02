@@ -1,9 +1,10 @@
-export type Verdict = 'PASS' | 'REFINE';
+export type Verdict = 'PASS' | 'REFINE' | 'CLARIFY';
 
 export interface SupervisorResult {
   verdict: Verdict;
   reasoning: string;
   feedback?: string;
+  question?: string; // populated when verdict is CLARIFY
 }
 
 const MAX_RETRIES = 3;

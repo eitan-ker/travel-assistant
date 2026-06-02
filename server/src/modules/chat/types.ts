@@ -10,4 +10,5 @@ export interface ChatResponse {
   toolsUsed: string[];
   supervisors: { name: string; verdict: string }[];
   userContext: Record<string, unknown>;
+  isClarification?: boolean;
 }

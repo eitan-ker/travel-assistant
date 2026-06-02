@@ -25,8 +25,12 @@ export async function executeTool(
     const weather = await getWeather(city);
 
     const dataResult = await runDataSupervisor(`weather for ${city}`, weather, 'weather');
+    if (dataResult.verdict === 'CLARIFY') {
+      console.warn(`[data-supervisor] weather ambiguous: ${dataResult.question}`);
+      return { content: '', source: '', clarification: dataResult.question };
+    }
     if (dataResult.verdict === 'REFINE') {
-      console.warn(`[data-supervisor] weather data rejected: ${dataResult.feedback}`);
+      console.warn(`[data-supervisor] weather data rejected: ${dataResult.feedback ?? 'no feedback'}`);
       return {
         content: `Could not get reliable weather data for "${city}". Use your general knowledge about the climate there.`,
         source: '',
@@ -48,8 +52,12 @@ export async function executeTool(
     const info = await getCountryInfo(country);
 
     const dataResult = await runDataSupervisor(`country info for ${country}`, info, 'country_info');
+    if (dataResult.verdict === 'CLARIFY') {
+      console.warn(`[data-supervisor] country ambiguous: ${dataResult.question}`);
+      return { content: '', source: '', clarification: dataResult.question };
+    }
     if (dataResult.verdict === 'REFINE') {
-      console.warn(`[data-supervisor] country data rejected: ${dataResult.feedback}`);
+      console.warn(`[data-supervisor] country data rejected: ${dataResult.feedback ?? 'no feedback'}`);
       return {
         content: `Could not get reliable data for "${country}". Use your general knowledge.`,
         source: '',
@@ -88,7 +96,7 @@ export async function executeTool(
     console.log(`[data-supervisor] attractions: ${dataResult.verdict}`);
 
     if (dataResult.verdict === 'REFINE') {
-      console.warn(`[data-supervisor] attractions rejected: ${dataResult.feedback}`);
+      console.warn(`[data-supervisor] attractions rejected: ${dataResult.feedback ?? 'no feedback'}`);
       return {
         content: `Could not get reliable attractions data for "${city}". Use your general knowledge about things to do there.`,
         source: '',

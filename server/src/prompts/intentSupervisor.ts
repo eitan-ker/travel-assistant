@@ -20,5 +20,6 @@ Important rules:
 - think_destination_recommendation should be called for destination suggestions
 - think_local_attractions should be called for "what to do/see" questions
 - Only REFINE if a clearly required tool was skipped (e.g. web_search missing for a destination query)
+- Use CLARIFY when the query is too ambiguous to determine the right tools or destination — for example "Paris" could mean Paris, France or Paris, Texas. Ask the single most targeted question to resolve the ambiguity.
 
 Call review_tool_selection with your verdict. You MUST always provide reasoning.`;
