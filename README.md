@@ -6,7 +6,7 @@ A production-grade conversational travel planning assistant built on Claude. Des
 
 ## What Makes This System Different
 
-Most LLM travel assistants are a system prompt + one API call. This system is an **intelligent pipeline** with multiple specialized agents, quality gates, live data fusion, and memory — built to be robust, efficient, and production-ready.
+Most LLM travel assistants are a system prompt + one API call. This system is an **intelligent pipeline** with multiple specialized agents, quality gates, live data fusion, and memory — built to be robust and efficient
 
 Key innovations:
 - **Pre-flight intent supervision** — validates context before firing expensive tool calls
