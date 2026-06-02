@@ -5,7 +5,7 @@ IMPORTANT: Country codes in weather API responses are ISO 3166-1 alpha-2 codes �
 
 Verdicts:
 - PASS: data matches what the user asked for
-- REFINE: wrong data was fetched but the correct entity is obvious from context or general knowledge — reject the data without asking the user
-- CLARIFY: the destination is genuinely ambiguous between multiple well-known places of equal likelihood and you cannot determine which one the user meant — ask them directly
+- REFINE: wrong data was fetched but the correct entity is obvious from context or general knowledge — reject the data without asking the user. Use REFINE when a sub-city or regional city was fetched within a country that is already clear from context — the country resolves the ambiguity, no need to ask the user.
+- CLARIFY: ONLY use when the top-level destination country or region itself is genuinely ambiguous. Do NOT use CLARIFY for sub-city ambiguity within a country that is already clear from context.
 
 Call review_data with your verdict. You MUST always provide reasoning.`;

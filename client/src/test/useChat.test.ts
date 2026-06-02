@@ -60,6 +60,15 @@ describe('loadFromStorage', () => {
 });
 
 describe('send', () => {
+  it('does nothing when text exceeds 4000 characters', async () => {
+    const { result } = renderHook(() => useChat());
+
+    await act(async () => { await result.current.send('a'.repeat(4001)); });
+
+    expect(client.sendMessage).not.toHaveBeenCalled();
+    expect(result.current.messages).toEqual([]);
+  });
+
   it('does nothing when text is empty', async () => {
     const { result } = renderHook(() => useChat());
 
@@ -247,6 +256,27 @@ describe('clear', () => {
     const newSessionId = JSON.parse(localStorage.getItem('travel_chat') ?? '{}').sessionId;
     expect(newSessionId).toBeDefined();
     expect(newSessionId).not.toBe(originalSessionId);
+  });
+
+  it('still resets UI when clearSession throws on server', async () => {
+    vi.mocked(client.clearSession).mockRejectedValue(new Error('Server down'));
+    vi.mocked(client.sendMessage).mockResolvedValue({
+      reply: 'Hi!',
+      sessionId: 'abc',
+      sources: [],
+      toolsUsed: [],
+      supervisors: [],
+    });
+
+    const { result } = renderHook(() => useChat());
+
+    await act(async () => { await result.current.send('Hello'); });
+    expect(result.current.messages).toHaveLength(2);
+
+    await act(async () => { await result.current.clear(); });
+
+    expect(result.current.messages).toEqual([]);
+    expect(result.current.userContext).toEqual({});
   });
 
   it('persists new empty session to localStorage after clear so refresh stays in new chat', async () => {

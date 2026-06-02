@@ -24,7 +24,8 @@ export async function executeTool(
   if (toolName === 'get_weather') {
     const city = toolInput.city;
     const weather = await getWeather(city);
-    const dataResult = await runDataSupervisor(`weather for ${city}`, weather, DataType.Weather);
+    const context = toolInput.country ? `weather for ${city}, ${toolInput.country}` : `weather for ${city}`;
+    const dataResult = await runDataSupervisor(context, weather, DataType.Weather);
 
     if (dataResult.verdict === Verdict.Clarify) {
       console.warn(`[data-supervisor] weather ambiguous: ${dataResult.question}`);
@@ -51,7 +52,7 @@ export async function executeTool(
   if (toolName === 'get_country_info') {
     const country = toolInput.country;
     const info = await getCountryInfo(country);
-    const dataResult = await runDataSupervisor(`country info for ${country}`, info, DataType.CountryInfo);
+    const dataResult = await runDataSupervisor(`country info for ${country} — user is planning a trip there`, info, DataType.CountryInfo);
 
     if (dataResult.verdict === Verdict.Clarify) {
       console.warn(`[data-supervisor] country ambiguous: ${dataResult.question}`);

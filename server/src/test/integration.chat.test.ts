@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import request from 'supertest';
 import { app } from '../app.js';
+import { SupervisorVerdict } from '../shared/enums.js';
 
 // Mock the full pipeline so we don't hit real LLMs or APIs
 vi.mock('../modules/pipeline/index.js', () => ({
@@ -19,7 +20,7 @@ const DEFAULT_PIPELINE_RESULT = {
   reply: 'Tokyo is a great destination!',
   sources: ['Claude', 'OpenWeatherMap'],
   toolsUsed: ['get_weather'],
-  supervisors: [{ name: 'Intent Supervisor', verdict: 'PASS' }],
+  supervisors: [{ name: 'Intent Supervisor', verdict: SupervisorVerdict.Pass }],
   userContext: { destination: 'Tokyo, Japan' },
   isClarification: false,
 };
@@ -96,7 +97,7 @@ describe('POST /chat', () => {
     expect(res.body.reply).toContain('Did you mean');
   });
 
-  it('persists session across multiple messages', async () => {
+  it('persists session across multiple messages with correct history', async () => {
     const sessionId = 'multi-turn-session';
 
     await request(app)
@@ -109,9 +110,12 @@ describe('POST /chat', () => {
 
     expect(runPipeline).toHaveBeenCalledTimes(2);
 
-    // Second call should have history from first call
     const secondCallHistory = vi.mocked(runPipeline).mock.calls[1][0];
-    expect(secondCallHistory.length).toBeGreaterThan(0);
+    // History should contain user message and assistant reply from first turn
+    const userMsg = secondCallHistory.find((m) => m.content === 'I want to go to Tokyo');
+    const assistantMsg = secondCallHistory.find((m) => m.content === DEFAULT_PIPELINE_RESULT.reply);
+    expect(userMsg).toBeDefined();
+    expect(assistantMsg).toBeDefined();
   });
 
   it('includes userContext in response', async () => {

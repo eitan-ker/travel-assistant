@@ -131,9 +131,10 @@ Always call this before giving destination recommendations.
 
 After filling this in:
 1. Call get_country_info, get_weather, AND get_attractions for EACH of your 3 shortlisted destinations
-2. Use that live data to enrich and validate each recommendation
-3. Present all 3 options to the user with real, grounded reasoning (current weather, country facts, top attractions)
-4. Do NOT jump to packing or itinerary — wait for the user to confirm a destination first.`,
+2. For get_weather and get_attractions, always use the main tourist city or capital — not regional or obscure cities
+3. Use that live data to enrich and validate each recommendation
+4. Present all 3 options to the user with real, grounded reasoning (current weather, country facts, top attractions)
+5. Do NOT jump to packing or itinerary — wait for the user to confirm a destination first.`,
     input_schema: {
       type: 'object' as const,
       properties: {

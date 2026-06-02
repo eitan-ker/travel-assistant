@@ -20,7 +20,7 @@ vi.mock('../modules/rag/index.js', () => ({
 vi.mock('../modules/supervisor/data.js', () => ({
   runDataSupervisor: vi.fn(),
 }));
-vi.mock('../../utils/logger.js', () => ({
+vi.mock('../utils/logger.js', () => ({
   log: { toolCall: vi.fn() },
 }));
 

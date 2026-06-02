@@ -57,6 +57,10 @@ export function useChat() {
 
   const send = useCallback(async (text: string) => {
     if (!text.trim()) return;
+    if (text.length > 4000) {
+      console.warn('[send] message too long — ignoring');
+      return;
+    }
     if (isLoadingRef.current) return;
     isLoadingRef.current = true;
     const userMsg: ChatMessage = { id: generateId(), role: 'user', content: text };
@@ -88,7 +92,11 @@ export function useChat() {
   }, []);
 
   const clear = useCallback(async () => {
-    await clearSession(sessionId.current);
+    try {
+      await clearSession(sessionId.current);
+    } catch (err) {
+      console.error('[session] failed to clear session on server', err);
+    }
     sessionId.current = generateId();
     setMessages([]);
     setUserContext({});
