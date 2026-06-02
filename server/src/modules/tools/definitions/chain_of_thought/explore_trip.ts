@@ -19,7 +19,6 @@ Required UserContext fields — ask for these if missing before proceeding:
 Optional UserContext fields — use if available, do not ask if missing:
 - constraints, notes
 
-
 The plan must cover:
 - Getting there: flights from origin, travel time, connection options
 - Visa and entry: based on passport and destination country
