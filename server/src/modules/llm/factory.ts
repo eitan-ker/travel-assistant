@@ -1,6 +1,5 @@
-import type { LLMProvider } from './types.js';
 import { ClaudeProvider } from './claude.js';
 
-export function getLLMProvider(): LLMProvider {
+export function getLLMProvider(): ClaudeProvider {
   return new ClaudeProvider();
 }

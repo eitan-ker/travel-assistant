@@ -37,7 +37,7 @@ export async function runPipeline(
   existingContext: UserContext = {},
   toolCache: ToolCache = new Map(),
 ): Promise<PipelineResult & { compactedHistory?: Message[] }> {
-  const provider = getLLMProvider() as ClaudeProvider;
+  const provider = getLLMProvider();
   const supervisors: SupervisorLog[] = [];
   const allSources = new Set<string>();
   const allTools = new Set<string>();
@@ -120,7 +120,7 @@ export async function runPipeline(
   }
 
   const recentHistory = history
-    .filter((m) => m.role !== 'system')
+    .filter((m) => m.role !== Role.System)
     .slice(-RECENT_HISTORY_WINDOW_SIZE)
     .map((m) => `${m.role}: ${m.content.slice(0, HISTORY_MESSAGE_SUMMARY_CHARS)}`)
     .join('\n');

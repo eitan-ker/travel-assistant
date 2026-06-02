@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { DataSource } from '../../shared/enums.js';
+import { DataSource, Role } from '../../shared/enums.js';
 import { MAIN_CHAT_MAX_TOKENS } from '../../shared/constants.js';
 import type { LLMProvider, Message } from './types.js';
 import type { ToolCache } from '../session/types.js';
@@ -25,8 +25,8 @@ export class ClaudeProvider implements LLMProvider {
     this.toolsUsed = [];
     this.clarification = null;
 
-    const system = messages.find((m) => m.role === 'system')?.content;
-    const conversation = messages.filter((m) => m.role !== 'system');
+    const system = messages.find((m) => m.role === Role.System)?.content;
+    const conversation = messages.filter((m) => m.role !== Role.System);
 
     const anthropicMessages: Anthropic.MessageParam[] = conversation.map((m) => ({
       role: m.role as Anthropic.MessageParam['role'],

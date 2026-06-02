@@ -5,7 +5,8 @@ import { runPipeline } from '../pipeline/index.js';
 import type { ChatRequest } from './types.js';
 
 export async function handleChat(req: Request, res: Response): Promise<void> {
-  const { message, sessionId } = req.body as ChatRequest;
+  const message = req.body?.message;
+  const sessionId = req.body?.sessionId;
 
   if (!message || !sessionId) {
     res.status(400).json({ error: 'message and sessionId are required' });

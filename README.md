@@ -1,213 +1,356 @@
 # Travel Assistant
 
-A conversational travel planning assistant powered by Claude, with live data augmentation, RAG knowledge base, real-time web search, and a multi-stage supervisor pipeline with PASS / REFINE / CLARIFY verdicts.
+A production-grade conversational travel planning assistant built on Claude. Designed to demonstrate state-of-the-art prompt engineering, multi-agent supervision, real-time data augmentation, and intelligent context management — going far beyond a basic LLM wrapper.
 
-## Architecture
+---
+
+## What Makes This System Different
+
+Most LLM travel assistants are a system prompt + one API call. This system is an **intelligent pipeline** with multiple specialized agents, quality gates, live data fusion, and memory — built to be robust, efficient, and production-ready.
+
+Key innovations:
+- **Pre-flight intent supervision** — validates context before firing expensive tool calls
+- **3-stage quality supervisor pipeline** — catches hallucinations, wrong data, and bad tool selection
+- **CLARIFY verdict** — detects genuine ambiguity and asks the user instead of guessing
+- **Tool result cache** — prevents redundant API calls within a session (significant cost reduction)
+- **History compaction** — prevents context window bloat on long conversations
+- **RAG knowledge base** — 322 curated travel documents (WikiVoyage + Wikipedia) for stable local knowledge
+- **Session UserContext** — builds and persists a traveler profile across the entire conversation
+- **Parallel execution** — all tool calls within a response run concurrently via `Promise.all`
+
+---
+
+## System Architecture
 
 ```
 Browser (React + Vite)
   └── POST /chat { message, sessionId }
         └── Express Server (Node.js + TypeScript)
-              └── Pipeline (modules/pipeline/index.ts)
-                    ├── Travel Agent (Claude with 9 tools)
-                    │     ├── API tools
-                    │     │     ├── get_weather(city)            → OpenWeatherMap
-                    │     │     ├── get_country_info(country)    → RestCountries
-                    │     │     ├── get_attractions(city)        → OpenTripMap
-                    │     │     ├── get_exchange_rate(from, to)  → Frankfurter (ECB)
-                    │     │     └── search_travel_kb(query)      → RAG (322 docs, VoyageAI embeddings)
-                    │     ├── Reasoning tools (chain-of-thought)
-                    │     │     ├── think_destination_recommendation
-                    │     │     ├── think_packing_advice
-                    │     │     ├── think_local_attractions
-                    │     │     └── think_trip_plan
-                    │     └── Web search (Anthropic built-in)
-                    │           └── web_search → live internet, news, advisories
-                    └── Supervisor Pipeline
-                          ├── Data Supervisor     — validates API data, PASS/REFINE/CLARIFY
-                          ├── Intent Supervisor   — audits tool selection, PASS/REFINE/CLARIFY
-                          └── Response Supervisor — quality gate, PASS/REFINE
+              └── Pipeline
+                    │
+                    ├── 1. UserContext Extraction (parallel, background)
+                    │      └── Lightweight Claude call extracts traveler profile from every message
+                    │
+                    ├── 2. Pre-flight Intent Supervisor
+                    │      └── PASS → tools run | CLARIFY → ask user (skip tools entirely)
+                    │
+                    ├── 3. Travel Agent (Claude with 10 tools)
+                    │      ├── API Tools (live external data)
+                    │      │     ├── get_weather(city)         → OpenWeatherMap
+                    │      │     ├── get_country_info(country) → RestCountries
+                    │      │     ├── get_attractions(location) → OpenTripMap
+                    │      │     ├── get_exchange_rate(from,to)→ Frankfurter (ECB)
+                    │      │     └── search_travel_kb(query)   → RAG (322 docs, VoyageAI)
+                    │      ├── Chain-of-Thought Reasoning Tools
+                    │      │     ├── explore_destination       → 3 destination recommendations
+                    │      │     ├── explore_attractions       → 3 location discoveries
+                    │      │     ├── think_packing_advice      → personalized packing list
+                    │      │     └── explore_trip              → complete departure-to-return plan
+                    │      └── Server-side Web Search
+                    │            └── web_search → Anthropic built-in, live news & advisories
+                    │
+                    ├── 4. Data Supervisor (per tool call)
+                    │      └── Validates API data matches the query: PASS / REFINE / CLARIFY
+                    │
+                    ├── 5. Response Supervisor
+                    │      └── Quality gate: hallucinations, verbosity, unanswered: PASS / REFINE
+                    │
+                    ├── 6. Tool Result Cache
+                    │      └── Caches API results within session — prevents redundant calls
+                    │
+                    └── 7. History Compaction
+                           └── Summarizes old turns when conversation grows too large
 ```
 
-## Prompt Engineering
+---
 
-### 1. LLM-driven Tool Use — Claude IS the Decision Method
-Claude receives 9 tools and decides autonomously when to call them. The system prompt defines explicit decision criteria:
-- Live data that changes → call an API tool
-- Domain knowledge that doesn't change → use Claude's knowledge
-- Both relevant → call the tool AND use knowledge together
+## Prompt Engineering Deep Dive
 
-This replaces a rule-based intent classifier — Claude is the decision engine.
+### 1. LLM as the Decision Engine
 
-### 2. Reasoning Tools as Chain-of-Thought
-Reasoning tools guide Claude through structured thinking before responding:
+Claude receives all 10 tools and decides autonomously when to call them. The system prompt defines a strict decision philosophy:
 
-**`think_destination_recommendation`** — budget → season → interests → 3-destination shortlist → top pick.
-Then for EACH of the 3 shortlisted destinations, Claude calls `get_country_info`, `get_weather`, and `get_attractions` to ground every recommendation in live data (3×3 = 9 API calls per recommendation query).
+- **Live data that changes** → call an API tool
+- **Stable knowledge** → use RAG knowledge base
+- **General travel advice** → Claude's training knowledge
+- **Current news** → web search
 
-**`think_packing_advice`** — climate → trip length → activities → essentials → nice-to-have
+This replaces a rule-based intent classifier — Claude IS the decision method.
 
-**`think_local_attractions`** — travel style → neighborhoods → must-sees → hidden gems → food & culture
+### 2. Chain-of-Thought Reasoning Tools
 
-**`think_trip_plan`** — the full trip planner. When destination, origin, duration, and budget are known: visa situation → getting there → accommodation → week-by-week itinerary → day trips → budget breakdown → practical tips. Always paired with `get_weather`, `get_country_info`, `get_attractions`, and `get_exchange_rate`.
+Four structured reasoning tools force Claude through multi-step thinking before responding. Each tool schema is itself a chain-of-thought — the fields ARE the reasoning steps.
 
-### 3. 3-Stage Supervisor Pipeline with CLARIFY
-Each supervisor owns one concern, uses Claude tool use for forced structured output:
+**`explore_destination`** — identifies 3 personalized destination matches based on full traveler profile (interests, passport, budget, origin, group, style, constraints). Required fields include passport (visa filtering) and interests. After reasoning, fires `get_country_info + get_weather + get_attractions` × 3 destinations + `search_travel_kb` + `web_search` for each. Ends with a comparison table.
 
-| Supervisor | When | Checks | Verdicts |
+**`explore_attractions`** — identifies 3 distinct locations to explore based on traveler profile. Required: interests, traveler_group, passport. After reasoning, fires `get_attractions` × 3 locations + `search_travel_kb` + `web_search`.
+
+**`think_packing_advice`** — determines what this specific traveler needs to bring. Required: destination, origin (power adapters, climate transition), passport (entry restrictions), interests, travel_style, traveler_group, budget, duration. After reasoning, fires `get_weather` + `get_exchange_rate` + `web_search` + `search_travel_kb`.
+
+**`explore_trip`** — the master workflow. Builds a complete departure-to-return plan. Required: destination, origin, duration, budget, passport, traveler_group, interests, travel_style. After reasoning, fires all API tools + KB + web search. Output covers: getting there, visa, accommodation, day-by-day itinerary, day trips, budget breakdown, packing essentials, practical tips.
+
+### 3. Pre-flight Intent Supervisor
+
+Runs **before** the Travel Agent and any tool calls. Uses a two-step reasoning protocol:
+
+1. **Step 1 — Conversation state check**: Did the agent's last message ask a question? If yes, the user is answering it → PASS immediately (prevents false ambiguity on answers like "Israeli" after "What's your passport?")
+2. **Step 2 — New query check**: Is there a genuine place-name collision? → CLARIFY with specific options
+
+This prevents wasting 12+ API calls when context is insufficient, and prevents false CLARIFYs when users answer questions.
+
+### 4. Multi-Stage Supervisor Pipeline
+
+Three specialized supervisors, each owning one concern:
+
+| Supervisor | Fires | Checks | Verdicts |
 |---|---|---|---|
-| Data Supervisor | After each API tool call | Was the right data fetched? | PASS / REFINE / CLARIFY |
-| Intent Supervisor | After Travel Agent | Did Claude call the right tools? | PASS / REFINE / CLARIFY |
-| Response Supervisor | Always | Hallucination, verbosity, unanswered | PASS / REFINE |
+| Pre-flight | Before tools | Enough context to proceed? Ambiguous? | PASS / CLARIFY |
+| Data | After each API call | Did we fetch the right data? | PASS / REFINE / CLARIFY |
+| Response | After Travel Agent | Quality, hallucinations, verbosity | PASS / REFINE |
 
-**CLARIFY verdict:** When the query or fetched data is genuinely ambiguous (e.g. "Paris" could be France or Texas), the supervisor returns CLARIFY with a targeted question instead of guessing. The pipeline short-circuits — skips response generation and returns the question directly to the user. This is the correct state-of-the-art approach for a travel assistant where getting the destination wrong is a costly error.
+**CLARIFY verdict**: When a supervisor detects genuine ambiguity (e.g. "Paris" → France or Texas?), the pipeline short-circuits — returns a targeted question to the user, zero tools fired, zero tokens wasted.
 
-**Supervisor robustness:** Each supervisor retries up to 3 times if it returns a verdict without reasoning. Falls back to PASS on 3rd failure.
+**REFINE verdict**: Supervisor provides specific feedback, Travel Agent retries with corrective context. Response Supervisor retries with `disableTools=true` to avoid re-running expensive tool calls.
 
-### 4. RAG Knowledge Base
-322 documents (WikiVoyage + Wikipedia) embedded with VoyageAI (`voyage-3-lite`) and stored as JSONL. `search_travel_kb` retrieves the top-3 most relevant docs via cosine similarity at query time. Called for every destination-specific query to enrich responses with curated local knowledge — complements live API data, never replaces it.
+**Supervisor robustness**: Each supervisor retries up to 3 times if it returns empty reasoning. Falls back to PASS on 3rd failure — a verdict without reasoning is untrustworthy.
 
-### 5. Web Search (Anthropic Built-in)
-`web_search` is an Anthropic server-side tool — no external API key needed. Called for any destination-specific query to fetch recent news, travel advisories, entry requirement changes, and current events. Results are interleaved as `web_search_tool_result` blocks in Claude's response and detected at `end_turn` to correctly tag "Web Search" as a source.
+### 5. RAG Knowledge Base
 
-### 6. Session-Level User Context
-Every message runs a lightweight Claude call in parallel with the Travel Agent to extract user profile fields: destination, origin, passport, budget, travel style, duration, group, constraints. Stored per session and injected into every subsequent system prompt as a `[User Profile]` block. Claude personalizes all responses to the specific traveler without being asked twice.
+322 documents from WikiVoyage (160) and Wikipedia (163) covering 167 destinations worldwide. Built offline using VoyageAI `voyage-3-lite` embeddings.
 
-The `destination` field overwrites on change — if the user switches from Tokyo to Bali, context updates automatically. The `passport` field enables implicit constraint checking (e.g. detecting that an Israeli passport holder cannot enter Iran).
+**What it contains**: WikiVoyage provides practical travel guides — neighborhoods, local customs, etiquette, safety patterns, transportation culture, hidden spots. Wikipedia provides factual and historical context — city history, geography, cultural significance.
 
-### 7. Session Context Injected into Supervisors
-The Intent Supervisor receives the current session UserContext alongside the user message. This prevents false CLARIFY verdicts on follow-up queries — "what's the weather there?" is not ambiguous when the context shows `destination: Tokyo, Japan`.
+**Why offline**: This is stable knowledge that doesn't change week-to-week. Fetching it at query time via web search would waste tokens and latency on static information.
 
-### 8. Parallelization
-Two layers of parallel execution:
-- **Tool calls** — all tools within a single Claude response fire via `Promise.all`. A 3×3 destination query (9 API calls) runs in ~1-2 seconds instead of ~5-9 sequentially.
-- **Supervisors** — Intent + Response Supervisors start in parallel after Travel Agent completes. On the happy path, both results are ready simultaneously. On Intent REFINE, the optimistic Response result is discarded and re-run on the retried reply.
+**How it works**: At query time, the search query is embedded with VoyageAI and top-3 documents retrieved via cosine similarity. The KB answers "what is this place like?" — complementing live APIs which answer "what is happening right now?"
 
-### 9. Response Retry Without Tools
-When Response Supervisor REFINEs, the retry call passes `disableTools = true` — Claude rewrites using context already in the conversation, without re-running expensive tool calls (especially web search which returns large result blocks that can flood the input context).
+### 6. Tool Result Cache
 
-## Setup
+Every successful API call result is cached in the session with a 30-minute TTL. Cache key is normalized (e.g. `"Bali, Indonesia"` and `"Bali"` hit the same key). 
+
+**Impact**: A destination recommendation query fires 13+ API calls. If the user follows up about the same destinations, all those calls return from cache — zero API cost, near-zero latency. The cache content is also injected into the system prompt so Claude knows not to re-fetch.
+
+### 7. History Compaction
+
+When conversation history exceeds 80,000 characters (~20,000 tokens, 40% of the rate limit), the pipeline triggers compaction. A lightweight Claude call summarizes the entire history into a structured JSON:
+
+```json
+{
+  "tripGoal": "destination, duration, dates, budget",
+  "userProfile": "origin, passport, interests, group, constraints",
+  "conversationSummary": "what was discussed and recommended",
+  "decisions": "what the user confirmed",
+  "pendingQuestions": "what the assistant last asked"
+}
+```
+
+The summary replaces full history in the session store. Long conversations stay efficient without losing context.
+
+### 8. Session-Level UserContext
+
+Every message runs a parallel lightweight Claude call that extracts traveler profile fields:
+
+| Field | Why it matters |
+|---|---|
+| `destination` | Extracted from any travel query, not just direct statements |
+| `origin` | Affects flights, climate transition, power adapters |
+| `passport` | Array — traveler may hold multiple. Determines visa access, entry restrictions |
+| `interests` | Shapes every recommendation |
+| `travelStyle` | Budget/mid-range/luxury changes everything |
+| `tripDuration` | Affects packing, itinerary density |
+| `travelGroup` | Solo vs family vs couple changes accommodation and activities |
+| `budget` | Buy-there vs bring-from-home decisions, accommodation tier |
+| `travelerConstraints` | Accessibility, dietary, medical — affects destination suitability |
+
+The profile accumulates across the session. Passport is an array (Israeli + American → use most advantageous). "None" or negation values are automatically rejected and not stored.
+
+The extractor receives the **last assistant message** as context — so when the agent asks "Where are you flying from?" and the user answers "Ramat Gan", it correctly extracts `origin: Ramat Gan` instead of overwriting `destination`.
+
+### 9. Parallel Execution
+
+Two layers of concurrency eliminate serial API bottlenecks:
+- **Within a Travel Agent response**: all tool calls fire via `Promise.all` — a 3×3 destination query (9 API calls) runs in ~1-2 seconds instead of ~9 sequential calls
+- **Supervisors**: Response Supervisor starts optimistically in parallel with the Travel Agent. If PASS — both results ready simultaneously. If REFINE — one extra call, not two serial ones.
+
+---
+
+## Installation
 
 ### Prerequisites
-- Node.js 18+
-- Anthropic API key — [console.anthropic.com](https://console.anthropic.com)
-- OpenWeatherMap API key — [openweathermap.org/api](https://openweathermap.org/api) (free tier)
-- OpenTripMap API key — [opentripmap.org](https://opentripmap.org) (free tier)
-- VoyageAI API key — [voyageai.com](https://www.voyageai.com) (free tier, for RAG embeddings)
 
-### Install
+| Requirement | Source |
+|---|---|
+| Node.js 18+ | [nodejs.org](https://nodejs.org) |
+| Anthropic API key | [console.anthropic.com](https://console.anthropic.com) |
+| OpenWeatherMap API key | [openweathermap.org/api](https://openweathermap.org/api) — free tier |
+| OpenTripMap API key | [opentripmap.org](https://opentripmap.org) — free tier |
+| VoyageAI API key | [voyageai.com](https://www.voyageai.com) — free tier |
+
+### Step 1 — Clone and Install
 
 ```bash
+git clone <repo-url>
+cd travel-assistant
+
+# Install server dependencies
 cd server && npm install
-cd client && npm install
+
+# Install client dependencies
+cd ../client && npm install
 ```
 
-### Configure
+### Step 2 — Configure Environment
 
 Create `server/.env`:
 
 ```env
+# Required
 ANTHROPIC_API_KEY=sk-ant-...
+OPENWEATHER_API_KEY=your_key_here
+OPENTRIPMAP_API_KEY=your_key_here
+VOYAGEAI_API_KEY=your_key_here
+
+# Model (Haiku = fast/cheap, Sonnet = higher quality)
 CLAUDE_MODEL=claude-haiku-4-5-20251001
-OPENWEATHER_API_KEY=your_key
-OPENTRIPMAP_API_KEY=your_key
-VOYAGEAI_API_KEY=your_key
+
+# Server port (optional, default 3001)
 PORT=3001
 ```
 
-### Run
+### Step 3 — Run
+
+Open two terminals:
 
 ```bash
-# Terminal 1
+# Terminal 1 — Start server
 cd server && npm run dev
 
-# Terminal 2
+# Terminal 2 — Start client
 cd client && npm run dev
 ```
 
-Open [http://localhost:5173](http://localhost:5173)
+Open **[http://localhost:5173](http://localhost:5173)**
 
-The RAG knowledge base (`server/data/kb.jsonl`) is pre-built and included. No need to rebuild.
+> The RAG knowledge base (`server/data/kb.jsonl`) is pre-built and included — no rebuild needed.
+
+### Step 4 — Try It
+
+Sample queries to explore the system:
+- `"Where should I go in August for beaches? I'm from Israel with 10K ILS"`
+- `"What to pack for a week in Iceland in winter?"`
+- `"Plan a 2-week trip to Paris from Tel Aviv, mid-range budget"`
+- `"What's up in Bali right now?"`
+- `"Best local food spots in Tokyo?"`
+
+---
 
 ## UI Features
 
-Every assistant response shows:
-- **Blue tags** — data sources (Claude, OpenWeatherMap, RestCountries, OpenTripMap, Frankfurter, Knowledge Base, Web Search)
-- **White tags** — API tools called (get weather, get attractions, web search, etc.)
-- **Yellow tags** — chain-of-thought reasoning tools used (think destination recommendation, etc.)
-- **Supervisor list** — each supervisor's verdict per line (PASS / REFINED / SKIPPED / CLARIFY)
-- **Traveler profile bar** — accumulated user context (destination, origin, passport, budget, interests)
-- **Clarification bubble** — distinct styled message when CLARIFY is triggered, with ⚠ indicator
+Every assistant response shows full pipeline transparency:
 
-Server terminal shows structured color-coded logs per request — full pipeline visibility including draft response, tool calls, and supervisor reasoning with verdicts.
+- **Blue source tags** — which data sources powered the response (Claude, OpenWeatherMap, Web Search, etc.)
+- **White tool tags** — which API tools were called
+- **Yellow chain-of-thought tags** — which reasoning tools fired (explore_destination, think_packing_advice, etc.)
+- **Supervisor badges** — each supervisor's verdict (PASS / REFINED / CLARIFY / SKIPPED)
+- **Traveler profile bar** — accumulated session profile (destination ✈, origin, passport 🛂, budget, interests, group)
+- **Clarification bubble** — distinct styled message with ⚠ when CLARIFY triggers
+- **Thinking time** — response generation time shown per message
 
-## Query Types
+Server terminal shows structured color-coded logs with full pipeline visibility — draft response, tool calls, supervisor reasoning, and cache hits.
 
-| Type | Example | Tools Used |
+---
+
+## Supported Query Types
+
+| Query Type | Example | Tools Fired |
 |---|---|---|
-| Destination recommendation | "Where should I go in August for beaches?" | think_destination_recommendation + 3×(get_country_info + get_weather + get_attractions) + search_travel_kb + web_search |
-| Live weather | "What's the weather in Tokyo right now?" | get_weather |
+| Destination discovery | "Where should I go for beaches in August?" | explore_destination → 3×(get_country_info + get_weather + get_attractions) + search_travel_kb + web_search |
+| Attraction exploration | "What should I see and do?" | explore_attractions → get_attractions ×3 + search_travel_kb + web_search |
+| Packing advice | "What to pack for Iceland in winter?" | think_packing_advice → get_weather + get_exchange_rate + search_travel_kb + web_search |
+| Full trip plan | "Plan 2 weeks in Paris from Tel Aviv, 10K ILS" | explore_trip → all API tools + search_travel_kb + web_search |
+| Live weather | "What's the weather in Bangkok?" | get_weather |
 | Country info | "Tell me about Japan" | get_country_info + search_travel_kb |
-| Packing advice | "What to pack for Iceland in winter?" | think_packing_advice + get_weather |
-| Local attractions | "Best things to do in Barcelona?" | get_attractions + think_local_attractions + search_travel_kb |
-| Current news | "What's up in Bali?" | get_weather + get_attractions + search_travel_kb + web_search |
-| Exchange rate | "How far does $5k go in Japan?" | get_exchange_rate |
-| Full trip plan | "Plan 2 weeks in Paris from Israel, $10k budget" | think_trip_plan + get_weather + get_country_info + get_attractions + get_exchange_rate + search_travel_kb + web_search |
-| Ambiguous query | "What's the weather in Paris?" | → CLARIFY: "Did you mean Paris, France or Paris, Texas?" |
+| Current events | "What's up in Bali right now?" | get_weather + get_attractions + search_travel_kb + web_search |
+| Exchange rates | "How far does my budget go in Thailand?" | get_exchange_rate |
+| Ambiguous query | "Explore Paris" | → CLARIFY: specific question naming the options |
+| Unsafe destination | "I want to go to North Korea" | Handled via knowledge — redirects with alternatives |
+
+---
 
 ## Project Structure
 
 ```
 travel-assistant/
-├── server/src/
-│   ├── index.ts                         Express app entry point
-│   ├── shared/types.ts                  Cross-cutting types (Message, Role)
-│   ├── modules/
-│   │   ├── chat/
-│   │   │   ├── index.ts                 Router
-│   │   │   ├── handler.ts               Request/response logic
-│   │   │   └── types.ts
-│   │   ├── pipeline/
-│   │   │   ├── index.ts                 Orchestration: Travel Agent → Supervisors
-│   │   │   └── types.ts                 PipelineResult, SupervisorLog
-│   │   ├── supervisor/
-│   │   │   ├── intent.ts                Tool selection auditor
-│   │   │   ├── data.ts                  Data relevance validator
-│   │   │   ├── response.ts              Response quality gate
-│   │   │   └── types.ts                 Verdict, SupervisorResult, runWithRetry
-│   │   ├── tools/
-│   │   │   ├── definitions.ts           9 tool definitions
-│   │   │   ├── executor.ts              Tool execution + Data Supervisor integration
-│   │   │   └── types.ts                 ToolExecutionResult
-│   │   ├── rag/
-│   │   │   ├── loader.ts                Load kb.jsonl into memory
-│   │   │   ├── search.ts                Cosine similarity search
-│   │   │   ├── embedder.ts              VoyageAI embedding client
-│   │   │   ├── destinations.ts          List of 167 destinations for KB build
-│   │   │   └── types.ts                 KBDoc
-│   │   ├── integrations/
-│   │   │   ├── weather.ts               OpenWeatherMap client
-│   │   │   ├── countries.ts             RestCountries client
-│   │   │   ├── attractions.ts           OpenTripMap client
-│   │   │   └── exchangeRate.ts          Frankfurter (ECB) client
-│   │   ├── llm/
-│   │   │   ├── claude.ts                Tool use loop, web search detection, source tracking
-│   │   │   ├── factory.ts               Provider factory
-│   │   │   └── types.ts                 LLMProvider interface
-│   │   └── session/
-│   │       ├── store.ts                 In-memory session store
-│   │       ├── userContext.ts           Context extractor + formatter
-│   │       └── types.ts                 UserContext schema
-│   ├── prompts/
-│   │   ├── system.ts                    Main travel assistant system prompt
-│   │   ├── intentSupervisor.ts          Intent supervisor prompt
-│   │   ├── dataSupervisor.ts            Data supervisor prompt
-│   │   ├── responseSupervisor.ts        Response supervisor prompt
-│   │   └── userContext.ts               User context extraction prompt
-│   └── utils/logger.ts                  Structured color-coded terminal logging
-├── server/data/kb.jsonl                 Pre-built RAG knowledge base (322 docs)
-└── client/src/
-    ├── App.tsx                          Chat UI with markdown + table rendering
-    ├── hooks/useChat.ts                 State + localStorage persistence (15-min TTL)
-    └── api/client.ts                    HTTP client
+├── server/
+│   ├── src/
+│   │   ├── index.ts                    Entry point
+│   │   ├── app.ts                      Express app (testable without starting server)
+│   │   ├── shared/
+│   │   │   ├── enums.ts                Role, Verdict, DataSource, DataType, SupervisorVerdict
+│   │   │   ├── constants.ts            All magic numbers as named constants
+│   │   │   └── types.ts                Message, Role
+│   │   ├── modules/
+│   │   │   ├── chat/                   HTTP boundary — router + handler
+│   │   │   ├── pipeline/               Orchestration — full pipeline flow
+│   │   │   ├── supervisor/
+│   │   │   │   ├── supervisors/
+│   │   │   │   │   ├── intent.ts       Pre-flight supervisor
+│   │   │   │   │   ├── data.ts         Data relevance validator
+│   │   │   │   │   └── response.ts     Response quality gate
+│   │   │   │   ├── guards.ts           Type guards + verdict parser
+│   │   │   │   └── types.ts            SupervisorResult, runWithRetry
+│   │   │   ├── tools/
+│   │   │   │   ├── definitions/
+│   │   │   │   │   ├── api/            get_weather, get_country_info, get_attractions, get_exchange_rate
+│   │   │   │   │   ├── chain_of_thought/ explore_destination, explore_attractions, think_packing_advice, explore_trip
+│   │   │   │   │   ├── rag/            search_travel_kb
+│   │   │   │   │   └── claude/         web_search
+│   │   │   │   ├── executor.ts         Tool execution + cache + Data Supervisor
+│   │   │   │   └── types.ts            ToolExecutionResult
+│   │   │   ├── rag/
+│   │   │   │   ├── handler/            loader, search, embedder
+│   │   │   │   └── types.ts            KBDoc
+│   │   │   ├── api/
+│   │   │   │   └── apis/               weather, countries, attractions, exchangeRate clients
+│   │   │   ├── llm/                    ClaudeProvider — tool loop, web search, cache
+│   │   │   ├── session/                sessionStore, userContext extractor, types
+│   │   │   └── compaction/             History compaction logic
+│   │   ├── prompts/
+│   │   │   ├── system.ts               Main travel agent system prompt
+│   │   │   └── compaction.ts           Compaction summary prompt
+│   │   └── utils/logger.ts             Structured color-coded terminal logging
+│   ├── data/kb.jsonl                   Pre-built RAG knowledge base (322 docs)
+│   └── scripts/buildKb.ts              Offline KB build script (VoyageAI embeddings)
+├── client/src/
+│   ├── App.tsx                         Chat UI — markdown, tables, source badges
+│   ├── hooks/useChat.ts                State, session persistence, 30-min TTL
+│   └── api/client.ts                   HTTP client
+└── transcripts/                        Sample conversation transcripts
 ```
+
+---
+
+## Running Tests
+
+```bash
+# Server tests (59 tests)
+cd server && npm test
+
+# Client tests (29 tests)
+cd client && npm test
+```
+
+---
+
+## Key Design Decisions
+
+See [`Key Decisions`](docs/) for the full record of 50+ architectural decisions made during development — including decisions where the original approach was overridden and why.
+
+Highlights:
+- **LLM-driven tool use** replaced a rule-based intent classifier — Claude evaluates context and decides which tools to call
+- **CLARIFY verdict** added as a third supervisor outcome — not just PASS/REFINE, but proactive disambiguation
+- **Pre-flight supervisor** runs before tools fire — prevents wasteful API calls when context is insufficient
+- **Tool cache** tied to session TTL — single source of truth for cache lifetime
+- **History compaction** triggered at 40% of rate limit (80K chars) — prevents rate limit errors on long conversations
+- **Response Supervisor retry uses `disableTools=true`** — prevents web search re-execution that floods input context
+- **UserContext extractor receives last assistant message** — prevents "israeli" (answering "what passport?") from being extracted as `destination`
