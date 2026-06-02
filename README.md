@@ -89,16 +89,11 @@ Four structured reasoning tools force Claude through multi-step thinking before 
 
 **`explore_trip`** — the master workflow. Builds a complete departure-to-return plan. Required: destination, origin, duration, budget, passport, traveler_group, interests, travel_style. After reasoning, fires all API tools + KB + web search. Output covers: getting there, visa, accommodation, day-by-day itinerary, day trips, budget breakdown, packing essentials, practical tips.
 
-### 3. Pre-flight Intent Supervisor
+### 3. Supervisor Pipeline (Pre-flight + Data + Response)
 
-Runs **before** the Travel Agent and any tool calls. Uses a two-step reasoning protocol:
+Three specialized supervisors each own one concern. The pre-flight runs before any tools fire; data and response run after.
 
-1. **Step 1 — Conversation state check**: Did the agent's last message ask a question? If yes, the user is answering it → PASS immediately (prevents false ambiguity on answers like "Israeli" after "What's your passport?")
-2. **Step 2 — New query check**: Is there a genuine place-name collision? → CLARIFY with specific options
-
-This prevents wasting 12+ API calls when context is insufficient, and prevents false CLARIFYs when users answer questions.
-
-### 4. Multi-Stage Supervisor Pipeline
+**Pre-flight** runs first using a two-step reasoning protocol: (1) did the agent just ask a question? If yes, the user is answering it → PASS immediately. (2) Is there a genuine place-name collision between equally well-known locations? → CLARIFY with specific options. This prevents wasting 12+ API calls on insufficient context and prevents false CLARIFYs when users are simply answering questions.
 
 Three specialized supervisors, each owning one concern:
 
