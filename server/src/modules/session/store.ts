@@ -1,15 +1,16 @@
 import type { Message } from '../../shared/types.js';
-import type { UserContext } from './types.js';
+import type { UserContext, ToolCache } from './types.js';
 
-interface Session {
+export interface Session {
   messages: Message[];
   userContext: UserContext;
+  toolCache: ToolCache;
 }
 
 const sessions = new Map<string, Session>();
 
 function emptySession(): Session {
-  return { messages: [], userContext: {} };
+  return { messages: [], userContext: {}, toolCache: new Map() };
 }
 
 export const sessionStore = {

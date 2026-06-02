@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { DataSource } from '../../shared/enums.js';
 import type { LLMProvider, Message } from './types.js';
+import type { ToolCache } from '../session/types.js';
 import { TRAVEL_TOOLS } from '../tools/index.js';
 import { executeTool } from '../tools/index.js';
 
@@ -17,7 +18,7 @@ export class ClaudeProvider implements LLMProvider {
     this.model = process.env.CLAUDE_MODEL ?? 'claude-haiku-4-5-20251001';
   }
 
-  async chat(messages: Message[], disableTools = false): Promise<string> {
+  async chat(messages: Message[], disableTools = false, toolCache?: ToolCache): Promise<string> {
     this.sources = [DataSource.Claude];
     this.toolsUsed = [];
     this.clarification = null;
@@ -85,7 +86,7 @@ export class ClaudeProvider implements LLMProvider {
         const toolResults = await Promise.all(
           clientToolBlocks.map(async (block): Promise<Anthropic.ToolResultBlockParam> => {
             try {
-              const result = await executeTool(block.name, block.input as Record<string, string>);
+              const result = await executeTool(block.name, block.input as Record<string, string>, toolCache);
               if (result.source) this.sources.push(result.source);
               if (result.clarification) this.clarification = result.clarification;
               return { type: 'tool_result', tool_use_id: block.id, content: result.content || 'Data unavailable — use your general knowledge.' };

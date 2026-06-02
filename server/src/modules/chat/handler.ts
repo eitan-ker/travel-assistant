@@ -16,13 +16,20 @@ export async function handleChat(req: Request, res: Response): Promise<void> {
   session.messages.push({ role: Role.User, content: message });
 
   try {
-    const { reply, sources, toolsUsed, supervisors, userContext, isClarification } = await runPipeline(
+    const { reply, sources, toolsUsed, supervisors, userContext, isClarification, compactedHistory } = await runPipeline(
       session.messages,
       message,
       session.userContext,
+      session.toolCache,
     );
 
-    session.messages.push({ role: Role.Assistant, content: reply });
+    // If compaction ran, replace history with the compact summary
+    if (compactedHistory) {
+      session.messages = compactedHistory;
+    } else {
+      session.messages.push({ role: Role.Assistant, content: reply });
+    }
+
     session.userContext = userContext;
     sessionStore.set(sessionId, session);
 

@@ -7,6 +7,7 @@ import { searchKb } from '../rag/index.js';
 import { runDataSupervisor } from '../supervisor/data.js';
 import { log } from '../../utils/logger.js';
 import type { ToolExecutionResult } from './types.js';
+import type { ToolCache } from '../session/types.js';
 
 const REASONING_TOOLS = new Set([
   'think_destination_recommendation',
@@ -15,11 +16,42 @@ const REASONING_TOOLS = new Set([
   'think_trip_plan',
 ]);
 
+const CACHEABLE_TOOLS = new Set([
+  'get_weather',
+  'get_country_info',
+  'get_attractions',
+  'get_exchange_rate',
+]);
+
+function normalizeValue(value: string): string {
+  return value.split(',')[0].trim().toLowerCase();
+}
+
+export function buildCacheKey(toolName: string, toolInput: Record<string, string>): string {
+  const normalized = Object.fromEntries(
+    Object.entries(toolInput).map(([k, v]) => [k, normalizeValue(v)])
+  );
+  return `${toolName}:${JSON.stringify(normalized)}`;
+}
+
 export async function executeTool(
   toolName: string,
   toolInput: Record<string, string>,
+  toolCache?: ToolCache,
 ): Promise<ToolExecutionResult> {
   log.toolCall(toolName, toolInput);
+
+  // Check cache for API tools
+  if (toolCache && CACHEABLE_TOOLS.has(toolName)) {
+    const key = buildCacheKey(toolName, toolInput);
+    const cached = toolCache.get(key);
+    if (cached) {
+      console.log(`[cache] hit for ${toolName} — skipping API call`);
+      return cached.result;
+    }
+  }
+
+  let result: ToolExecutionResult;
 
   if (toolName === 'get_weather') {
     const city = toolInput.city;
@@ -39,7 +71,7 @@ export async function executeTool(
       };
     }
 
-    return {
+    result = {
       content:
         `Current weather in ${weather.city}, ${weather.country}:\n` +
         `Temperature: ${weather.temperature}°C (feels like ${weather.feelsLike}°C)\n` +
@@ -47,9 +79,7 @@ export async function executeTool(
         `Humidity: ${weather.humidity}% | Wind: ${weather.windSpeed} m/s`,
       source: DataSource.OpenWeatherMap,
     };
-  }
-
-  if (toolName === 'get_country_info') {
+  } else if (toolName === 'get_country_info') {
     const country = toolInput.country;
     const info = await getCountryInfo(country);
     const dataResult = await runDataSupervisor(`country info for ${country} — user is planning a trip there`, info, DataType.CountryInfo);
@@ -66,7 +96,7 @@ export async function executeTool(
       };
     }
 
-    return {
+    result = {
       content:
         `${info.name} (${info.region}):\n` +
         `Capital: ${info.capital}\n` +
@@ -75,9 +105,7 @@ export async function executeTool(
         `Population: ${info.population.toLocaleString()}`,
       source: DataSource.RestCountries,
     };
-  }
-
-  if (toolName === 'get_attractions') {
+  } else if (toolName === 'get_attractions') {
     const city = toolInput.city;
     const attractions = await getAttractions(city);
 
@@ -105,36 +133,56 @@ export async function executeTool(
       };
     }
 
-    return {
+    result = {
       content: `Top attractions in ${city}:\n${list}`,
       source: DataSource.OpenTripMap,
     };
-  }
-
-  if (toolName === 'get_exchange_rate') {
+  } else if (toolName === 'get_exchange_rate') {
     const { from_currency, to_currency } = toolInput;
     const rate = await getExchangeRate(from_currency, to_currency);
-    return {
+    result = {
       content: `Live exchange rate (${rate.date}):\n1 ${rate.base} = ${rate.rate} ${rate.target}`,
       source: DataSource.Frankfurter,
     };
-  }
-
-  if (toolName === 'search_travel_kb') {
+  } else if (toolName === 'search_travel_kb') {
     const { query } = toolInput;
     const docs = await searchKb(query, 3);
     if (!docs.length) {
       return { content: 'No relevant knowledge base results found. Use your general knowledge.', source: '' };
     }
-    const result = docs.map((d) => `[${d.destination} — ${d.source}]\n${d.content}`).join('\n\n---\n\n');
+    const content = docs.map((d) => `[${d.destination} — ${d.source}]\n${d.content}`).join('\n\n---\n\n');
     console.log(`[rag] query: "${query}" → ${docs.length} docs: ${docs.map((d) => d.id).join(', ')}`);
-    return { content: result, source: DataSource.KnowledgeBase };
-  }
-
-  if (REASONING_TOOLS.has(toolName)) {
+    return { content, source: DataSource.KnowledgeBase };
+  } else if (REASONING_TOOLS.has(toolName)) {
     console.log(`[tool] reasoning tool ${toolName} — no execution needed`);
     return { content: 'Reasoning complete. Now provide your response based on this structured thinking.', source: '' };
+  } else {
+    throw new Error(`Unknown tool: ${toolName}`);
   }
 
-  throw new Error(`Unknown tool: ${toolName}`);
+  // Store successful result in cache
+  if (toolCache && CACHEABLE_TOOLS.has(toolName) && result.source) {
+    const key = buildCacheKey(toolName, toolInput);
+    toolCache.set(key, { result, cachedAt: Date.now() });
+    console.log(`[cache] stored ${toolName}`);
+  }
+
+  return result;
+}
+
+export function buildCacheContextBlock(toolCache: ToolCache): string {
+  if (!toolCache.size) return '';
+
+  const SESSION_TTL_MS = 15 * 60 * 1000;
+  const lines = [...toolCache.entries()]
+    .filter(([, entry]) => Date.now() - entry.cachedAt < SESSION_TTL_MS)
+    .filter(([, entry]) => entry.result.source && entry.result.content)
+    .map(([key, entry]) => {
+      const toolName = key.split(':')[0];
+      const firstLine = entry.result.content.split('\n')[0];
+      return `- ${toolName}: ${firstLine}`;
+    });
+
+  if (!lines.length) return '';
+  return lines.join('\n');
 }
