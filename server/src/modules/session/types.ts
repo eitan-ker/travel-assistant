@@ -3,7 +3,7 @@ import type { ToolExecutionResult } from '../tools/types.js';
 export interface UserContext {
   destination?: string;
   origin?: string;
-  passport?: string;
+  passport?: string[];  // traveler may hold multiple passports — use the most advantageous one per destination
   interests?: string[];
   budget?: string;
   travelStyle?: string;

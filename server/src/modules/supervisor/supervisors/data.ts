@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { DATA_SUPERVISOR_MAX_TOKENS, PREFLIGHT_SUPERVISOR_MAX_TOKENS, RESPONSE_SUPERVISOR_MAX_TOKENS, COMPACTION_SUMMARY_MAX_TOKENS } from '../../../shared/constants.js';
 import { Verdict, DataType } from '../../../shared/enums.js';
 import type { WeatherData } from '../../api/apis/weather.js';
 import type { CountryData } from '../../api/apis/countries.js';
@@ -11,7 +12,7 @@ IMPORTANT: Country codes in weather API responses are ISO 3166-1 alpha-2 codes �
 
 Verdicts:
 - PASS: data matches what the user asked for
-- REFINE: wrong data was fetched but the correct entity is obvious from context or general knowledge — reject the data without asking the user. Use REFINE when a sub-city or regional city was fetched within a country that is already clear from context — the country resolves the ambiguity, no need to ask the user.
+- REFINE: wrong data was fetched but the correct entity is obvious from context or general knowledge — reject the data without asking the user. You MUST always provide feedback explaining what was wrong. Use REFINE when a sub-city or regional city was fetched within a country that is already clear from context — the country resolves the ambiguity, no need to ask the user.
 - CLARIFY: ONLY use when the top-level destination country or region itself is genuinely ambiguous. Do NOT use CLARIFY for sub-city ambiguity within a country that is already clear from context.
 
 Call review_data with your verdict. You MUST always provide reasoning.`;
@@ -35,7 +36,7 @@ const TOOL: Anthropic.Tool = {
       },
       feedback: {
         type: 'string',
-        description: 'Required when verdict is REFINE. Explain what is wrong and what should be fetched instead.',
+        description: 'Required when verdict is REFINE. Always explain what was wrong with the fetched data.',
       },
       question: {
         type: 'string',
@@ -66,7 +67,7 @@ async function call(
 
   const response = await client.messages.create({
     model: process.env.CLAUDE_MODEL ?? 'claude-haiku-4-5-20251001',
-    max_tokens: 256,
+    max_tokens: DATA_SUPERVISOR_MAX_TOKENS,
     tools: [TOOL],
     tool_choice: { type: 'auto' },
     system: DATA_SUPERVISOR_PROMPT,

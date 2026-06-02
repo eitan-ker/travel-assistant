@@ -9,11 +9,13 @@ import { log } from '../../utils/logger.js';
 import type { ToolExecutionResult } from './types.js';
 import type { ToolCache } from '../session/types.js';
 
+import { SESSION_TTL_MS, KB_SEARCH_TOP_K } from '../../shared/constants.js';
+
 const REASONING_TOOLS = new Set([
-  'think_destination_recommendation',
+  'explore_destination',
+  'explore_attractions',
   'think_packing_advice',
-  'think_local_attractions',
-  'think_trip_plan',
+  'explore_trip',
 ]);
 
 const CACHEABLE_TOOLS = new Set([
@@ -146,7 +148,7 @@ export async function executeTool(
     };
   } else if (toolName === 'search_travel_kb') {
     const { query } = toolInput;
-    const docs = await searchKb(query, 3);
+    const docs = await searchKb(query, KB_SEARCH_TOP_K);
     if (!docs.length) {
       return { content: 'No relevant knowledge base results found. Use your general knowledge.', source: '' };
     }
@@ -173,7 +175,6 @@ export async function executeTool(
 export function buildCacheContextBlock(toolCache: ToolCache): string {
   if (!toolCache.size) return '';
 
-  const SESSION_TTL_MS = 15 * 60 * 1000;
   const lines = [...toolCache.entries()]
     .filter(([, entry]) => Date.now() - entry.cachedAt < SESSION_TTL_MS)
     .filter(([, entry]) => entry.result.source && entry.result.content)

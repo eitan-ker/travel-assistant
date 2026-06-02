@@ -7,10 +7,10 @@ import { get_attractions } from './api/get_attractions.js';
 import { get_exchange_rate } from './api/get_exchange_rate.js';
 
 // Chain of thought — structured reasoning
-import { think_destination_recommendation } from './chain_of_thought/think_destination_recommendation.js';
+import { explore_destination } from './chain_of_thought/explore_destination.js';
+import { explore_attractions } from './chain_of_thought/explore_attractions.js';
 import { think_packing_advice } from './chain_of_thought/think_packing_advice.js';
-import { think_local_attractions } from './chain_of_thought/think_local_attractions.js';
-import { think_trip_plan } from './chain_of_thought/think_trip_plan.js';
+import { explore_trip } from './chain_of_thought/explore_trip.js';
 
 // RAG — knowledge base search
 import { search_travel_kb } from './rag/search_travel_kb.js';
@@ -26,8 +26,8 @@ export const TRAVEL_TOOLS: Anthropic.Tool[] = [
   get_attractions,
   get_exchange_rate,
   search_travel_kb,
-  think_destination_recommendation,
+  explore_destination,
+  explore_attractions,
   think_packing_advice,
-  think_local_attractions,
-  think_trip_plan,
+  explore_trip,
 ];

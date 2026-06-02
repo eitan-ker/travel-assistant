@@ -1,11 +1,12 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { DATA_SUPERVISOR_MAX_TOKENS, PREFLIGHT_SUPERVISOR_MAX_TOKENS, RESPONSE_SUPERVISOR_MAX_TOKENS, COMPACTION_SUMMARY_MAX_TOKENS } from '../../shared/constants.js';
 import type { UserContext } from './types.js';
 
 const USER_CONTEXT_PROMPT = `Extract any new information from the user's message about themselves or their trip. Only extract what is explicitly stated — do not infer or guess. If nothing new is revealed, do not call the tool.
 
 Key fields to watch for:
 - destination: any place they mention traveling to or asking about — update if they switch destinations
-- passport: their nationality or passport country
+- passport: their passport nationalities — they may hold multiple passports, always collect all mentioned
 - interests: travel interests or activities mentioned (beach, culture, food, nightlife, hiking, relaxation, etc.)
 - travelStyle: how they travel — solo, couple, family, backpacker, luxury, etc.
 - budget: any budget amount or level mentioned
@@ -23,7 +24,11 @@ const TOOL: Anthropic.Tool = {
     properties: {
       destination: { type: 'string', description: 'The destination they are traveling to or asking about (city + country if known, e.g. "Tokyo, Japan"). Update if they mention a new destination.' },
       origin: { type: 'string', description: 'Where they are flying from or their home city/country' },
-      passport: { type: 'string', description: 'Their passport nationality (e.g. "Israeli", "American", "British")' },
+      passport: {
+        type: 'array',
+        items: { type: 'string' },
+        description: 'All passport nationalities mentioned — a traveler may hold multiple passports (e.g. ["Israeli", "American"]). Always collect all mentioned.',
+      },
       interests: {
         type: 'array',
         items: { type: 'string' },
@@ -65,7 +70,9 @@ export async function extractUserContext(userMessage: string, existing: UserCont
   return {
     destination: extracted.destination ?? existing.destination,
     origin: extracted.origin ?? existing.origin,
-    passport: extracted.passport ?? existing.passport,
+    passport: extracted.passport?.length
+      ? [...new Set([...(existing.passport ?? []), ...extracted.passport])]
+      : existing.passport,
     interests: extracted.interests?.length ? extracted.interests : existing.interests,
     budget: extracted.budget ?? existing.budget,
     travelStyle: extracted.travelStyle ?? existing.travelStyle,
@@ -80,7 +87,7 @@ export function formatUserContext(ctx: UserContext): string | null {
   const lines: string[] = [];
   if (ctx.destination) lines.push(`Destination: ${ctx.destination}`);
   if (ctx.origin) lines.push(`From: ${ctx.origin}`);
-  if (ctx.passport) lines.push(`Passport: ${ctx.passport}`);
+  if (ctx.passport?.length) lines.push(`Passport(s): ${ctx.passport.join(', ')}`);
   if (ctx.interests?.length) lines.push(`Interests: ${ctx.interests.join(', ')}`);
   if (ctx.budget) lines.push(`Budget: ${ctx.budget}`);
   if (ctx.travelStyle) lines.push(`Travel style: ${ctx.travelStyle}`);

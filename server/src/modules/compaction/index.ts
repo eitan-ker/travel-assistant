@@ -1,9 +1,10 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { DATA_SUPERVISOR_MAX_TOKENS, PREFLIGHT_SUPERVISOR_MAX_TOKENS, RESPONSE_SUPERVISOR_MAX_TOKENS, COMPACTION_SUMMARY_MAX_TOKENS } from '../../shared/constants.js';
 import { Role } from '../../shared/enums.js';
 import { COMPACTION_PROMPT } from '../../prompts/compaction.js';
 import type { Message } from '../../shared/types.js';
 
-const COMPACTION_THRESHOLD_CHARS = 80_000; // ~20,000 tokens at 4 chars/token
+import { COMPACTION_THRESHOLD_CHARS } from '../../shared/constants.js';
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 

@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { DataSource } from '../../shared/enums.js';
+import { MAIN_CHAT_MAX_TOKENS } from '../../shared/constants.js';
 import type { LLMProvider, Message } from './types.js';
 import type { ToolCache } from '../session/types.js';
 import { TRAVEL_TOOLS } from '../tools/index.js';
@@ -35,7 +36,7 @@ export class ClaudeProvider implements LLMProvider {
     while (true) {
       const response = await this.client.messages.create({
         model: this.model,
-        max_tokens: 8096,
+        max_tokens: MAIN_CHAT_MAX_TOKENS,
         ...(system ? { system } : {}),
         ...(disableTools
           ? {}

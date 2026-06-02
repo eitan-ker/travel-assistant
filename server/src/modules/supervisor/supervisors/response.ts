@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { DATA_SUPERVISOR_MAX_TOKENS, PREFLIGHT_SUPERVISOR_MAX_TOKENS, RESPONSE_SUPERVISOR_MAX_TOKENS, COMPACTION_SUMMARY_MAX_TOKENS } from '../../../shared/constants.js';
 import { Verdict } from '../../../shared/enums.js';
 import { runWithRetry, type SupervisorResult } from '../types.js';
 import { isSupervisorToolInput, parseVerdict } from '../guards.js';

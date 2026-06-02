@@ -1,4 +1,5 @@
 import { DataSource, Role, SupervisorVerdict, Verdict } from '../../shared/enums.js';
+import { RECENT_MESSAGE_CONTEXT_CHARS, RECENT_HISTORY_WINDOW_SIZE, HISTORY_MESSAGE_SUMMARY_CHARS } from '../../shared/constants.js';
 import { SYSTEM_PROMPT } from '../../prompts/system.js';
 import { runResponseSupervisor } from '../supervisor/supervisors/response.js';
 import { runPreflightSupervisor } from '../supervisor/supervisors/intent.js';
@@ -68,7 +69,7 @@ export async function runPipeline(
     const userContextBlock = formatUserContext(existingContext);
     const sessionContext = [
       userContextBlock,
-      lastAssistantMessage ? `Last assistant message: "${lastAssistantMessage.slice(0, 300)}"` : '',
+      lastAssistantMessage ? `Last assistant message: "${lastAssistantMessage.slice(0, RECENT_MESSAGE_CONTEXT_CHARS)}"` : '',
     ].filter(Boolean).join('\n') || undefined;
 
     const preflightResult = await runPreflightSupervisor(userMessage, sessionContext);
@@ -87,12 +88,7 @@ export async function runPipeline(
       };
     }
 
-    if (preflightResult.verdict === Verdict.Refine) {
-      disableToolsForInitialRun = true;
-      supervisors.push({ name: 'Pre-flight Supervisor', verdict: SupervisorVerdict.Refined });
-    } else {
-      supervisors.push({ name: 'Pre-flight Supervisor', verdict: SupervisorVerdict.Pass });
-    }
+    supervisors.push({ name: 'Pre-flight Supervisor', verdict: SupervisorVerdict.Pass });
   }
 
   // ── Travel Agent (initial) ───────────────────────────────────────────────
@@ -124,8 +120,8 @@ export async function runPipeline(
 
   const recentHistory = history
     .filter((m) => m.role !== 'system')
-    .slice(-4)
-    .map((m) => `${m.role}: ${m.content.slice(0, 150)}`)
+    .slice(-RECENT_HISTORY_WINDOW_SIZE)
+    .map((m) => `${m.role}: ${m.content.slice(0, HISTORY_MESSAGE_SUMMARY_CHARS)}`)
     .join('\n');
 
   // ── Response Supervisor ──────────────────────────────────────────────────
@@ -186,6 +182,13 @@ export async function runPipeline(
     compactedHistory = await compactHistory(historyWithCurrentTurn);
   }
 
+  // Strip excessive blank lines and whitespace gaps to prevent large gaps in UI rendering
+  const cleanedReply = reply
+    .replace(/\n{3,}/g, '\n\n')
+    .replace(/(#{1,3}[^\n]+)\n{2,}(\|)/g, '$1\n$2')  // heading immediately before table
+    .replace(/\*\*[^\n]+\*\*\n{2,}(\|)/g, '$&')       // bold heading before table
+    .trim();
+
   log.pipelineEnd([...allSources]);
-  return { reply, sources: [...allSources], toolsUsed: [...allTools], supervisors, userContext, compactedHistory };
+  return { reply: cleanedReply, sources: [...allSources], toolsUsed: [...allTools], supervisors, userContext, compactedHistory };
 }

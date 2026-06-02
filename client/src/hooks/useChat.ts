@@ -14,7 +14,8 @@ export interface ChatMessage {
 }
 
 const STORAGE_KEY = 'travel_chat';
-const SESSION_TTL_MS = 15 * 60 * 1000;
+export { SESSION_TTL_MS } from '../shared/constants.js';
+import { SESSION_TTL_MS, MAX_MESSAGE_LENGTH_CHARS } from '../shared/constants.js';
 
 function generateId() {
   return Math.random().toString(36).slice(2, 10);
@@ -57,7 +58,7 @@ export function useChat() {
 
   const send = useCallback(async (text: string) => {
     if (!text.trim()) return;
-    if (text.length > 4000) {
+    if (text.length > MAX_MESSAGE_LENGTH_CHARS) {
       console.warn('[send] message too long — ignoring');
       return;
     }

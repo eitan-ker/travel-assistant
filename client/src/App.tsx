@@ -5,6 +5,11 @@ import rehypeRaw from 'rehype-raw';
 import { useChat } from './hooks/useChat';
 import './App.css';
 
+const COT_TOOLS = new Set(['explore_destination', 'explore_attractions', 'explore_trip', 'think_packing_advice']);
+function isCotTool(tool: string): boolean {
+  return COT_TOOLS.has(tool) || tool.startsWith('think_');
+}
+
 export default function App() {
   const { messages, loading, send, clear, userContext } = useChat();
   const hasProfile = Object.values(userContext).some((v) => v && (Array.isArray(v) ? v.length > 0 : true));
@@ -46,7 +51,7 @@ export default function App() {
           <span className="profile-label">Traveler profile:</span>
           {userContext.destination && <span className="profile-tag">✈ {userContext.destination}</span>}
           {userContext.origin && <span className="profile-tag">from {userContext.origin}</span>}
-          {userContext.passport && <span className="profile-tag">🛂 {userContext.passport}</span>}
+          {userContext.passport?.map((p) => <span key={p} className="profile-tag">🛂 {p}</span>)}
           {userContext.tripDuration && <span className="profile-tag">{userContext.tripDuration}</span>}
           {userContext.budget && <span className="profile-tag">{userContext.budget}</span>}
           {userContext.travelGroup && <span className="profile-tag">{userContext.travelGroup}</span>}
@@ -91,12 +96,21 @@ export default function App() {
                     {msg.sources?.map((s) => (
                       <span key={s} className="source-tag">{s}</span>
                     ))}
-                    {msg.toolsUsed?.map((t) => (
-                      <span key={t} className={t.startsWith('think_') ? 'cot-tag' : 'tool-tag'}>
-                        {t.replace(/_/g, ' ')}
-                      </span>
-                    ))}
                   </div>
+                  {msg.toolsUsed?.filter(t => !isCotTool(t)).length > 0 && (
+                    <div className="sources">
+                      {msg.toolsUsed!.filter(t => !isCotTool(t)).map((t) => (
+                        <span key={t} className="tool-tag">{t.replace(/_/g, ' ')}</span>
+                      ))}
+                    </div>
+                  )}
+                  {msg.toolsUsed?.filter(t => isCotTool(t)).length > 0 && (
+                    <div className="sources">
+                      {msg.toolsUsed!.filter(t => isCotTool(t)).map((t) => (
+                        <span key={t} className="cot-tag">{t.replace(/_/g, ' ')}</span>
+                      ))}
+                    </div>
+                  )}
                   {msg.supervisors && msg.supervisors.length > 0 && (
                     <div className="supervisor-list">
                       {msg.supervisors.map((s) => (

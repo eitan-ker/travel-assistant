@@ -23,8 +23,8 @@ describe('formatUserContext', () => {
   });
 
   it('formats passport', () => {
-    const result = formatUserContext({ passport: 'Israeli' });
-    expect(result).toContain('Passport: Israeli');
+    const result = formatUserContext({ passport: ['Israeli'] });
+    expect(result).toContain('Passport(s): Israeli');
   });
 
   it('formats interests array', () => {
@@ -41,7 +41,7 @@ describe('formatUserContext', () => {
     const ctx: UserContext = {
       destination: 'Paris, France',
       origin: 'Ramat Gan',
-      passport: 'Israeli',
+      passport: ['Israeli'],
       budget: '20K ILS',
       travelStyle: 'explorer',
       tripDuration: '2 weeks',
@@ -52,7 +52,7 @@ describe('formatUserContext', () => {
     const result = formatUserContext(ctx);
     expect(result).toContain('Destination: Paris, France');
     expect(result).toContain('From: Ramat Gan');
-    expect(result).toContain('Passport: Israeli');
+    expect(result).toContain('Passport(s): Israeli');
     expect(result).toContain('Budget: 20K ILS');
     expect(result).toContain('Constraints: vegetarian');
     const lines = result!.split('\n');

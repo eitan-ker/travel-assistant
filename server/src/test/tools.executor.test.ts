@@ -137,10 +137,10 @@ describe('executeTool — search_travel_kb', () => {
 
 describe('executeTool — reasoning tools', () => {
   it.each([
-    'think_destination_recommendation',
+    'explore_destination',
     'think_packing_advice',
-    'think_local_attractions',
-    'think_trip_plan',
+    'explore_attractions',
+    'explore_trip',
   ])('returns reasoning complete for %s', async (toolName) => {
     const result = await executeTool(toolName, {});
 

@@ -1,3 +1,5 @@
+import { DEFAULT_ATTRACTIONS_LIMIT, ATTRACTIONS_SEARCH_RADIUS_METERS, ATTRACTIONS_MIN_RATING } from '../../../shared/constants.js';
+
 export interface Attraction {
   name: string;
   kinds: string;
@@ -26,7 +28,7 @@ async function getLocationCoords(location: string, apiKey: string): Promise<{ la
   return { lat: data.lat, lon: data.lon };
 }
 
-export async function getAttractions(location: string, limit = 10): Promise<Attraction[]> {
+export async function getAttractions(location: string, limit = DEFAULT_ATTRACTIONS_LIMIT): Promise<Attraction[]> {
   const key = process.env.OPENTRIPMAP_API_KEY;
   if (!key) throw new Error('OPENTRIPMAP_API_KEY is not set');
 
@@ -34,9 +36,9 @@ export async function getAttractions(location: string, limit = 10): Promise<Attr
 
   const url =
     `https://api.opentripmap.com/0.1/en/places/radius` +
-    `?radius=10000&lon=${lon}&lat=${lat}` +
+    `?radius=${ATTRACTIONS_SEARCH_RADIUS_METERS}&lon=${lon}&lat=${lat}` +
     `&kinds=interesting_places` +
-    `&rate=3&limit=${limit}` +
+    `&rate=${ATTRACTIONS_MIN_RATING}&limit=${limit}` +
     `&format=json` +
     `&apikey=${key}`;
 

@@ -49,7 +49,7 @@ describe('App', () => {
   it('shows profile bar when userContext has destination and passport', () => {
     mockUseChat.mockReturnValue({
       ...defaultChat(),
-      userContext: { destination: 'Tokyo, Japan', passport: 'Israeli' },
+      userContext: { destination: 'Tokyo, Japan', passport: ['Israeli'] },
     });
     render(<App />);
     expect(screen.getByText(/Tokyo, Japan/)).toBeInTheDocument();

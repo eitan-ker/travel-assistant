@@ -37,7 +37,7 @@ describe('loadFromStorage', () => {
 
   it('returns fresh session when TTL expired', () => {
     const messages = [{ id: '1', role: 'user', content: 'Old message' }];
-    const expiredTime = Date.now() - 16 * 60 * 1000; // 16 minutes ago
+    const expiredTime = Date.now() - 31 * 60 * 1000; // 31 minutes ago — past the 30-min TTL
     setStorage({ sessionId: 'old-id', messages, savedAt: expiredTime });
 
     const { result } = renderHook(() => useChat());

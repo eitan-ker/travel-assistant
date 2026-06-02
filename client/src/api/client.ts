@@ -8,7 +8,7 @@ export interface SupervisorLog {
 export interface UserContext {
   destination?: string;
   origin?: string;
-  passport?: string;
+  passport?: string[];
   interests?: string[];
   budget?: string;
   travelStyle?: string;
