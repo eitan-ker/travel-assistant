@@ -7,14 +7,14 @@ const USER_CONTEXT_PROMPT = `Extract any new information from the user's message
 Critical rule: use the last assistant message to understand what was being asked. If the assistant asked "where are you flying from?" and the user answered with a place name, extract it as origin — NOT destination. If the assistant asked about budget and the user answered with a number, extract it as budget. Always interpret the user's answer in the context of the question that was asked.
 
 Key fields to watch for:
-- destination: only update if the user is clearly stating a new travel destination — NOT if they are answering a question about origin or home
-- origin: where they are flying from or their home city/country — extract this when they answer "where are you flying from?" or similar
+- destination: the target location — the place being traveled to, packed for, explored, or asked about. Extract from any travel-related query regardless of how it's phrased (packing questions, weather questions, attraction questions, trip planning). Update when a new target location is mentioned.
+- origin: the source location — where the traveler is coming from, flying from, or calls home. This is a constraint on the trip (affects flights, visa, cost), not the travel target.
 - passport: their passport nationalities — they may hold multiple passports, always collect all mentioned
 - interests: travel interests or activities mentioned (beach, culture, food, nightlife, hiking, relaxation, etc.)
 - travelStyle: how they travel — solo, couple, family, backpacker, luxury, etc.
 - budget: any budget amount or level mentioned
 - tripDuration: how long the trip is
-- travelerConstraints: accessibility needs, dietary requirements, or any personal travel limitations`;
+- travelerConstraints: accessibility needs, dietary requirements, or any personal travel limitations — only extract if a real constraint is stated. If the user says "none", "no", "nothing", "no constraints", do NOT extract anything for this field.`;
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -24,8 +24,8 @@ const TOOL: Anthropic.Tool = {
   input_schema: {
     type: 'object' as const,
     properties: {
-      destination: { type: 'string', description: 'The destination they are traveling to or asking about (city + country if known, e.g. "Tokyo, Japan"). Update if they mention a new destination.' },
-      origin: { type: 'string', description: 'Where they are flying from or their home city/country' },
+      destination: { type: 'string', description: 'The target location — where they are traveling to, packing for, exploring, or asking about. Extract from any travel query regardless of phrasing.' },
+      origin: { type: 'string', description: 'The source location — where they are flying from or their home base. A trip constraint, not the travel target.' },
       passport: {
         type: 'array',
         items: { type: 'string' },
@@ -73,6 +73,9 @@ export async function extractUserContext(userMessage: string, existing: UserCont
   if (typeof raw !== 'object' || raw === null) return existing;
   const extracted = raw as Partial<UserContext>;
 
+  const NEGATION_VALUES = new Set(['none', 'no', 'n/a', 'nothing', 'no constraints', 'no restrictions']);
+  const isNegation = (v: string | undefined) => v && NEGATION_VALUES.has(v.toLowerCase().trim());
+
   return {
     destination: extracted.destination ?? existing.destination,
     origin: extracted.origin ?? existing.origin,
@@ -84,7 +87,7 @@ export async function extractUserContext(userMessage: string, existing: UserCont
     travelStyle: extracted.travelStyle ?? existing.travelStyle,
     tripDuration: extracted.tripDuration ?? existing.tripDuration,
     travelGroup: extracted.travelGroup ?? existing.travelGroup,
-    travelerConstraints: extracted.travelerConstraints ?? existing.travelerConstraints,
+    travelerConstraints: isNegation(extracted.travelerConstraints) ? undefined : (extracted.travelerConstraints ?? existing.travelerConstraints),
     notes: extracted.notes ?? existing.notes,
   };
 }

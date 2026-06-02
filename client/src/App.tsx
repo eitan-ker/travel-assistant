@@ -57,7 +57,7 @@ export default function App() {
           {userContext.travelGroup && <span className="profile-tag">{userContext.travelGroup}</span>}
           {userContext.interests?.map((i) => <span key={i} className="profile-tag">{i}</span>)}
           {userContext.travelStyle && <span className="profile-tag">{userContext.travelStyle}</span>}
-          {userContext.travelerConstraints && <span className="profile-tag">⚠ {userContext.travelerConstraints}</span>}
+          {userContext.travelerConstraints && !['none', 'no', 'n/a', 'nothing'].includes(userContext.travelerConstraints.toLowerCase()) && <span className="profile-tag">⚠ {userContext.travelerConstraints}</span>}
         </div>
       )}
 
@@ -84,7 +84,19 @@ export default function App() {
             <div className="message-body">
               <div className="bubble">
                 {msg.role === 'assistant'
-                  ? <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>{msg.content}</ReactMarkdown>
+                  ? <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      rehypePlugins={[rehypeRaw]}
+                      components={{
+                        p: ({ children }) => {
+                          const hasContent = Array.isArray(children)
+                            ? children.some(c => (typeof c === 'string' ? c.trim() : true))
+                            : typeof children === 'string' ? !!children.trim() : !!children;
+                          if (!hasContent) return null;
+                          return <p>{children}</p>;
+                        }
+                      }}
+                    >{msg.content}</ReactMarkdown>
                   : msg.content}
               </div>
               {msg.role === 'assistant' && msg.thinkingSeconds !== undefined && !msg.error && (

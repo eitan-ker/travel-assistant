@@ -8,6 +8,7 @@ Purpose: identify 3 destinations that genuinely match this traveler — personal
 
 Required UserContext fields — ask for these if missing before proceeding:
 - interests: what kind of travel they are looking for (beaches, culture, nightlife, adventure, food, nature, hiking, etc.)
+- passport: nationality affects which destinations are accessible visa-free — critical for filtering recommendations
 
 Optional UserContext fields — use if available, do not ask if missing:
 - origin, passport, traveler_group, travel_style, constraints, budget, duration, notes
@@ -43,6 +44,6 @@ These belong in explore_trip after the user confirms a destination.
       destination_2: { type: 'string', description: 'Second destination — must differ from destination_1' },
       destination_3: { type: 'string', description: 'Third destination — must differ from destination_1 and destination_2' },
     },
-    required: ['interests', 'reasoning', 'destination_1', 'destination_2', 'destination_3'],
+    required: ['interests', 'passport', 'reasoning', 'destination_1', 'destination_2', 'destination_3'],
   },
 };

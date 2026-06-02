@@ -186,7 +186,8 @@ export async function runPipeline(
   // Strip excessive blank lines and whitespace gaps to prevent large gaps in UI rendering
   const cleanedReply = reply
     .replace(/\n{3,}/g, '\n\n')
-    .replace(/\n{2,}(\|)/g, '\n$1')  // collapse any blank lines before table rows
+    .replace(/\n+(\|)/g, '\n$1')  // remove ALL blank lines before table rows
+    .replace(/<br\s*\/?>/gi, '')   // strip br tags that create invisible height
     .trim();
 
   log.pipelineEnd([...allSources]);

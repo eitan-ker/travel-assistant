@@ -11,9 +11,14 @@ Required UserContext fields — ask for these if missing before proceeding:
 - origin: where they are flying from
 - duration: how long the trip is
 - budget: total budget and currency
+- passport: nationality affects visa requirements and entry
+- traveler_group: who they are traveling with affects accommodation and itinerary
+- interests: what they want to do shapes the whole plan
+- travel_style: budget/mid-range/luxury shapes every recommendation
 
 Optional UserContext fields — use if available, do not ask if missing:
-- passport, traveler_group, interests, travel_style, constraints, notes
+- constraints, notes
+
 
 The plan must cover:
 - Getting there: flights from origin, travel time, connection options

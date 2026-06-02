@@ -6,15 +6,16 @@ import { isSupervisorToolInput, parseVerdict } from '../guards.js';
 
 const PREFLIGHT_INTENT_PROMPT = `You are a pre-flight check for a travel assistant. Your default is PASS. CLARIFY is rare.
 
-CLARIFY only when the user has written a name that is equally shared by multiple famous real-world places — and you truly cannot determine which one they mean without asking.
+Reason in this exact order:
 
-PASS always when:
-- The name refers to one clear, real location (even if small or unfamiliar)
-- The user is answering a question the agent asked
-- Context or information is missing but the intent is clear
-- You are unsure — default to PASS
+STEP 1 — Is the user answering the agent's question?
+Look at the "Last assistant message" in the session context. If it asked the user anything (origin, passport, budget, interests, dates, travel style, etc.), then the user's message is an ANSWER to that question. PASS immediately. Do not evaluate it as a new destination or check for ambiguity. A nationality, a number, a city, a one-word reply — these are answers, not destination changes.
 
-CLARIFY is NOT for: incomplete answers, short responses, ambiguous intent, or unusual place names. Only for genuine name collision between equally famous places.
+STEP 2 — Only if the message is a genuinely NEW query (not an answer):
+CLARIFY only when the user named a place that is equally shared by multiple famous real-world locations and you truly cannot tell which one they mean. Everything else PASS.
+When you CLARIFY, the question field is REQUIRED and MUST name the specific competing options so the user can pick one. Never return CLARIFY with an empty or generic question.
+
+Never CLARIFY for: answers to the agent's questions, incomplete info, short replies, or a single clear location. When unsure, PASS.
 
 Call preflight_check with your verdict. You MUST always provide reasoning.`;
 

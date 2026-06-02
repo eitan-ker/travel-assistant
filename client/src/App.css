@@ -233,7 +233,7 @@ body {
 .bubble h1:first-child, .bubble h2:first-child, .bubble h3:first-child { margin-top: 0; }
 .bubble code { background: #0d1117; padding: 1px 5px; border-radius: 3px; font-size: 13px; }
 .bubble hr { border: none; border-top: 1px solid #2a2d3e; margin: 4px 0; }
-.bubble cite { font-style: normal; }
+.bubble cite { font-style: normal; display: inline; }
 .bubble p:has(table) { margin: 0; padding: 0; }
 .bubble table { border-collapse: collapse; width: 100%; margin: 4px 0; font-size: 12px; }
 .bubble th, .bubble td { border: 1px solid #2a2d3e; padding: 3px 8px; text-align: left; }

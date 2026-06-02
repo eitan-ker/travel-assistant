@@ -61,10 +61,11 @@ export class ClaudeProvider implements LLMProvider {
           .filter((b) => b.type === 'text')
           .map((b) => (b.type === 'text' ? b.text : ''))
           .join('');
-        // Strip any leaked function_calls XML (can appear when tools are disabled on retry)
+        // Strip any leaked function call/result XML (can appear when tools are disabled on retry)
         return text
           .replace(/<function_calls>[\s\S]*?<\/function_calls>/g, '')
-          .replace(/<\/?function_calls>/g, '')
+          .replace(/<function_results>[\s\S]*?<\/function_results>/g, '')
+          .replace(/<\/?function_(calls|results)>/g, '')
           .trim();
       }
 
