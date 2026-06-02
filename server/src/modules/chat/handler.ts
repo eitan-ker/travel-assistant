@@ -1,4 +1,5 @@
 import type { Request, Response } from 'express';
+import { Role } from '../../shared/enums.js';
 import { sessionStore } from '../session/store.js';
 import { runPipeline } from '../pipeline/index.js';
 import type { ChatRequest } from './types.js';
@@ -12,7 +13,7 @@ export async function handleChat(req: Request, res: Response): Promise<void> {
   }
 
   const session = sessionStore.get(sessionId);
-  session.messages.push({ role: 'user', content: message });
+  session.messages.push({ role: Role.User, content: message });
 
   try {
     const { reply, sources, toolsUsed, supervisors, userContext, isClarification } = await runPipeline(
@@ -21,7 +22,7 @@ export async function handleChat(req: Request, res: Response): Promise<void> {
       session.userContext,
     );
 
-    session.messages.push({ role: 'assistant', content: reply });
+    session.messages.push({ role: Role.Assistant, content: reply });
     session.userContext = userContext;
     sessionStore.set(sessionId, session);
 

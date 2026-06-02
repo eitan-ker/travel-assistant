@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { DataSource } from '../../shared/enums.js';
 import type { LLMProvider, Message } from './types.js';
 import { TRAVEL_TOOLS } from '../tools/index.js';
 import { executeTool } from '../tools/index.js';
@@ -17,7 +18,7 @@ export class ClaudeProvider implements LLMProvider {
   }
 
   async chat(messages: Message[], disableTools = false): Promise<string> {
-    this.sources = ['Claude'];
+    this.sources = [DataSource.Claude];
     this.toolsUsed = [];
     this.clarification = null;
 
@@ -46,7 +47,7 @@ export class ClaudeProvider implements LLMProvider {
       if (response.stop_reason === 'end_turn' || response.stop_reason === 'max_tokens') {
         const hasWebResults = response.content.some((b) => b.type === 'web_search_tool_result');
         if (hasWebResults) {
-          this.sources.push('Web Search');
+          this.sources.push(DataSource.WebSearch);
           this.toolsUsed.push('web_search');
         }
         if (response.stop_reason === 'max_tokens') {
@@ -74,7 +75,7 @@ export class ClaudeProvider implements LLMProvider {
         const clientToolBlocks = toolBlocks.filter((b) => b.name !== 'web_search');
         const hasWebSearch = toolBlocks.some((b) => b.name === 'web_search');
 
-        if (hasWebSearch) this.sources.push('Web Search');
+        if (hasWebSearch) this.sources.push(DataSource.WebSearch);
 
         if (clientToolBlocks.length === 0) {
           // Only web search calls — Anthropic handles them, just continue the loop

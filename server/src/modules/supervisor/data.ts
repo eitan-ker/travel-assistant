@@ -1,7 +1,8 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { Verdict, DataType } from '../../shared/enums.js';
 import type { WeatherData } from '../integrations/weather.js';
 import type { CountryData } from '../integrations/countries.js';
-import { runWithRetry, type SupervisorResult, type Verdict } from './types.js';
+import { runWithRetry, type SupervisorResult } from './types.js';
 import { DATA_SUPERVISOR_PROMPT } from '../../prompts/dataSupervisor.js';
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -14,8 +15,8 @@ const TOOL: Anthropic.Tool = {
     properties: {
       verdict: {
         type: 'string',
-        enum: ['PASS', 'REFINE', 'CLARIFY'],
-        description: 'PASS if data matches. REFINE if clearly wrong but obvious fix. CLARIFY if the user query is ambiguous and you need them to specify (e.g. which city they meant).',
+        enum: [Verdict.Pass, Verdict.Refine, Verdict.Clarify],
+        description: 'PASS if data matches. REFINE if clearly wrong but obvious fix. CLARIFY if the user query is ambiguous and you need them to specify.',
       },
       reasoning: {
         type: 'string',
@@ -27,23 +28,36 @@ const TOOL: Anthropic.Tool = {
       },
       question: {
         type: 'string',
-        description: 'Required when verdict is CLARIFY. Short, direct question to ask the user. Example: "Did you mean Netanya, Israel or Netanya, Illinois?"',
+        description: 'Required when verdict is CLARIFY. Short, direct question to ask the user.',
       },
     },
     required: ['verdict', 'reasoning'],
   },
 };
 
+interface ToolInput {
+  verdict: string;
+  reasoning?: string;
+  feedback?: string;
+  question?: string;
+}
+
+function buildDataDescription(data: WeatherData | CountryData | string, dataType: DataType): string {
+  if (typeof data === 'string') return data;
+  if (dataType === DataType.Weather) {
+    const w = data as WeatherData;
+    return `Weather data fetched for: ${w.city} (ISO country code: ${w.country})`;
+  }
+  const c = data as CountryData;
+  return `Country data fetched for: ${c.name} (${c.region})`;
+}
+
 async function call(
   userMessage: string,
   data: WeatherData | CountryData | string,
-  dataType: 'weather' | 'country_info' | 'attractions',
+  dataType: DataType,
 ): Promise<SupervisorResult> {
-  const dataDescription = typeof data === 'string'
-    ? data
-    : dataType === 'weather'
-      ? `Weather data fetched for: ${(data as WeatherData).city} (ISO country code: ${(data as WeatherData).country})`
-      : `Country data fetched for: ${(data as CountryData).name} (${(data as CountryData).region})`;
+  const dataDescription = buildDataDescription(data, dataType);
 
   const response = await client.messages.create({
     model: process.env.CLAUDE_MODEL ?? 'claude-haiku-4-5-20251001',
@@ -60,16 +74,21 @@ async function call(
   });
 
   const toolUse = response.content.find((b) => b.type === 'tool_use');
-  if (!toolUse || toolUse.type !== 'tool_use') return { verdict: 'PASS', reasoning: 'No tool use response' };
+  if (!toolUse || toolUse.type !== 'tool_use') return { verdict: Verdict.Pass, reasoning: 'No tool use response' };
 
-  const input = toolUse.input as { verdict: string; reasoning?: string; feedback?: string; question?: string };
-  return { verdict: input.verdict as Verdict, reasoning: input.reasoning ?? '', feedback: input.feedback, question: input.question };
+  const input = toolUse.input as ToolInput;
+  return {
+    verdict: input.verdict as Verdict,
+    reasoning: input.reasoning ?? '',
+    feedback: input.feedback,
+    question: input.question,
+  };
 }
 
 export function runDataSupervisor(
   userMessage: string,
   data: WeatherData | CountryData | string,
-  dataType: 'weather' | 'country_info' | 'attractions',
+  dataType: DataType,
 ): Promise<SupervisorResult> {
   return runWithRetry('data-supervisor', () => call(userMessage, data, dataType));
 }

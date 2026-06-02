@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { Verdict } from '../../shared/enums.js';
 import { runWithRetry, type SupervisorResult } from './types.js';
 import { RESPONSE_SUPERVISOR_PROMPT } from '../../prompts/responseSupervisor.js';
 
@@ -12,7 +13,7 @@ const TOOL: Anthropic.Tool = {
     properties: {
       verdict: {
         type: 'string',
-        enum: ['PASS', 'REFINE'],
+        enum: [Verdict.Pass, Verdict.Refine],
         description: 'PASS if response is good quality. REFINE if it has issues.',
       },
       reasoning: {
@@ -27,6 +28,12 @@ const TOOL: Anthropic.Tool = {
     required: ['verdict', 'reasoning'],
   },
 };
+
+interface ToolInput {
+  verdict: string;
+  reasoning?: string;
+  feedback?: string;
+}
 
 async function call(
   userMessage: string,
@@ -53,10 +60,14 @@ async function call(
   });
 
   const toolUse = result.content.find((b) => b.type === 'tool_use');
-  if (!toolUse || toolUse.type !== 'tool_use') return { verdict: 'PASS', reasoning: 'No tool use response' };
+  if (!toolUse || toolUse.type !== 'tool_use') return { verdict: Verdict.Pass, reasoning: 'No tool use response' };
 
-  const input = toolUse.input as { verdict: string; reasoning?: string; feedback?: string };
-  return { verdict: input.verdict as 'PASS' | 'REFINE', reasoning: input.reasoning ?? '', feedback: input.feedback };
+  const input = toolUse.input as ToolInput;
+  return {
+    verdict: input.verdict as Verdict,
+    reasoning: input.reasoning ?? '',
+    feedback: input.feedback,
+  };
 }
 
 export function runResponseSupervisor(

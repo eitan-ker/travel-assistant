@@ -1,5 +1,6 @@
-// Cross-cutting types used across multiple modules
-export type Role = 'system' | 'user' | 'assistant';
+import { Role } from './enums.js';
+
+export type { Role };
 
 export interface Message {
   role: Role;

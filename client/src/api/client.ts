@@ -2,7 +2,7 @@ const SERVER_URL = 'http://localhost:3001';
 
 export interface SupervisorLog {
   name: string;
-  verdict: 'PASS' | 'REFINED' | 'SKIPPED' | 'CLARIFY';
+  verdict: 'PASS' | 'REFINED' | 'SKIPPED' | 'CLARIFY' | 'REFINE';
 }
 
 export interface UserContext {

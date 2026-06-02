@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { runWithRetry, type SupervisorResult, type Verdict } from './types.js';
+import { Verdict } from '../../shared/enums.js';
+import { runWithRetry, type SupervisorResult } from './types.js';
 import { INTENT_SUPERVISOR_PROMPT } from '../../prompts/intentSupervisor.js';
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -12,7 +13,7 @@ const TOOL: Anthropic.Tool = {
     properties: {
       verdict: {
         type: 'string',
-        enum: ['PASS', 'REFINE', 'CLARIFY'],
+        enum: [Verdict.Pass, Verdict.Refine, Verdict.Clarify],
         description: 'PASS if tool selection was appropriate. REFINE if wrong or missing tools. CLARIFY if the query is too ambiguous to determine the right tools or destination.',
       },
       reasoning: {
@@ -25,12 +26,19 @@ const TOOL: Anthropic.Tool = {
       },
       question: {
         type: 'string',
-        description: 'Required on CLARIFY. A short, direct question to ask the user to resolve the ambiguity. Example: "Did you mean Paris, France or Paris, Texas?"',
+        description: 'Required on CLARIFY. A short, direct question to ask the user to resolve the ambiguity.',
       },
     },
     required: ['verdict', 'reasoning'],
   },
 };
+
+interface ToolInput {
+  verdict: string;
+  reasoning?: string;
+  feedback?: string;
+  question?: string;
+}
 
 async function call(userMessage: string, toolsUsed: string[], sessionContext?: string): Promise<SupervisorResult> {
   const toolsSummary = toolsUsed.length > 0
@@ -56,10 +64,15 @@ async function call(userMessage: string, toolsUsed: string[], sessionContext?: s
   });
 
   const toolUse = response.content.find((b) => b.type === 'tool_use');
-  if (!toolUse || toolUse.type !== 'tool_use') return { verdict: 'PASS', reasoning: 'No tool use response' };
+  if (!toolUse || toolUse.type !== 'tool_use') return { verdict: Verdict.Pass, reasoning: 'No tool use response' };
 
-  const input = toolUse.input as { verdict: string; reasoning?: string; feedback?: string; question?: string };
-  return { verdict: input.verdict as Verdict, reasoning: input.reasoning ?? '', feedback: input.feedback, question: input.question };
+  const input = toolUse.input as ToolInput;
+  return {
+    verdict: input.verdict as Verdict,
+    reasoning: input.reasoning ?? '',
+    feedback: input.feedback,
+    question: input.question,
+  };
 }
 
 export function runIntentSupervisor(userMessage: string, toolsUsed: string[], sessionContext?: string): Promise<SupervisorResult> {

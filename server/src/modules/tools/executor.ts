@@ -1,3 +1,4 @@
+import { DataSource, DataType, Verdict } from '../../shared/enums.js';
 import { getWeather } from '../integrations/weather.js';
 import { getCountryInfo } from '../integrations/countries.js';
 import { getAttractions } from '../integrations/attractions.js';
@@ -23,13 +24,13 @@ export async function executeTool(
   if (toolName === 'get_weather') {
     const city = toolInput.city;
     const weather = await getWeather(city);
+    const dataResult = await runDataSupervisor(`weather for ${city}`, weather, DataType.Weather);
 
-    const dataResult = await runDataSupervisor(`weather for ${city}`, weather, 'weather');
-    if (dataResult.verdict === 'CLARIFY') {
+    if (dataResult.verdict === Verdict.Clarify) {
       console.warn(`[data-supervisor] weather ambiguous: ${dataResult.question}`);
       return { content: '', source: '', clarification: dataResult.question };
     }
-    if (dataResult.verdict === 'REFINE') {
+    if (dataResult.verdict === Verdict.Refine) {
       console.warn(`[data-supervisor] weather data rejected: ${dataResult.feedback ?? 'no feedback'}`);
       return {
         content: `Could not get reliable weather data for "${city}". Use your general knowledge about the climate there.`,
@@ -43,20 +44,20 @@ export async function executeTool(
         `Temperature: ${weather.temperature}°C (feels like ${weather.feelsLike}°C)\n` +
         `Conditions: ${weather.description}\n` +
         `Humidity: ${weather.humidity}% | Wind: ${weather.windSpeed} m/s`,
-      source: 'OpenWeatherMap',
+      source: DataSource.OpenWeatherMap,
     };
   }
 
   if (toolName === 'get_country_info') {
     const country = toolInput.country;
     const info = await getCountryInfo(country);
+    const dataResult = await runDataSupervisor(`country info for ${country}`, info, DataType.CountryInfo);
 
-    const dataResult = await runDataSupervisor(`country info for ${country}`, info, 'country_info');
-    if (dataResult.verdict === 'CLARIFY') {
+    if (dataResult.verdict === Verdict.Clarify) {
       console.warn(`[data-supervisor] country ambiguous: ${dataResult.question}`);
       return { content: '', source: '', clarification: dataResult.question };
     }
-    if (dataResult.verdict === 'REFINE') {
+    if (dataResult.verdict === Verdict.Refine) {
       console.warn(`[data-supervisor] country data rejected: ${dataResult.feedback ?? 'no feedback'}`);
       return {
         content: `Could not get reliable data for "${country}". Use your general knowledge.`,
@@ -71,7 +72,7 @@ export async function executeTool(
         `Currency: ${info.currencies.join(', ')}\n` +
         `Languages: ${info.languages.join(', ')}\n` +
         `Population: ${info.population.toLocaleString()}`,
-      source: 'RestCountries',
+      source: DataSource.RestCountries,
     };
   }
 
@@ -91,11 +92,11 @@ export async function executeTool(
 
     const list = attractions.map((a, i) => `${i + 1}. ${a.name} (${a.kinds})`).join('\n');
     const description = `Attractions fetched for "${city}":\n${list}`;
+    const dataResult = await runDataSupervisor(`attractions in ${city}`, description, DataType.Attractions);
 
-    const dataResult = await runDataSupervisor(`attractions in ${city}`, description, 'attractions');
     console.log(`[data-supervisor] attractions: ${dataResult.verdict}`);
 
-    if (dataResult.verdict === 'REFINE') {
+    if (dataResult.verdict === Verdict.Refine) {
       console.warn(`[data-supervisor] attractions rejected: ${dataResult.feedback ?? 'no feedback'}`);
       return {
         content: `Could not get reliable attractions data for "${city}". Use your general knowledge about things to do there.`,
@@ -105,7 +106,7 @@ export async function executeTool(
 
     return {
       content: `Top attractions in ${city}:\n${list}`,
-      source: 'OpenTripMap',
+      source: DataSource.OpenTripMap,
     };
   }
 
@@ -114,19 +115,19 @@ export async function executeTool(
     const rate = await getExchangeRate(from_currency, to_currency);
     return {
       content: `Live exchange rate (${rate.date}):\n1 ${rate.base} = ${rate.rate} ${rate.target}`,
-      source: 'Frankfurter',
+      source: DataSource.Frankfurter,
     };
   }
 
   if (toolName === 'search_travel_kb') {
-    const query = toolInput.query;
+    const { query } = toolInput;
     const docs = await searchKb(query, 3);
-    if (docs.length === 0) {
+    if (!docs.length) {
       return { content: 'No relevant knowledge base results found. Use your general knowledge.', source: '' };
     }
     const result = docs.map((d) => `[${d.destination} — ${d.source}]\n${d.content}`).join('\n\n---\n\n');
     console.log(`[rag] query: "${query}" → ${docs.length} docs: ${docs.map((d) => d.id).join(', ')}`);
-    return { content: result, source: 'Knowledge Base' };
+    return { content: result, source: DataSource.KnowledgeBase };
   }
 
   if (REASONING_TOOLS.has(toolName)) {

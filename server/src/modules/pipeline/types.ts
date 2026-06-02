@@ -1,6 +1,11 @@
+import { SupervisorVerdict } from '../../shared/enums.js';
+import type { UserContext } from '../session/types.js';
+
+export { SupervisorVerdict };
+
 export interface SupervisorLog {
   name: string;
-  verdict: 'PASS' | 'REFINED' | 'SKIPPED' | 'CLARIFY';
+  verdict: SupervisorVerdict;
 }
 
 export interface PipelineResult {
@@ -8,6 +13,6 @@ export interface PipelineResult {
   sources: string[];
   toolsUsed: string[];
   supervisors: SupervisorLog[];
-  userContext: import('../session/types.js').UserContext;
+  userContext: UserContext;
   isClarification?: boolean;
 }
