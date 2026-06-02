@@ -173,20 +173,23 @@ Two layers of concurrency eliminate serial API bottlenecks:
 
 ### Prerequisites
 
-| Requirement | Source |
+| Requirement | Notes |
 |---|---|
-| Node.js 18+ | [nodejs.org](https://nodejs.org) |
+| Node.js 18+ | Download from [nodejs.org](https://nodejs.org) |
 | Anthropic API key | [console.anthropic.com](https://console.anthropic.com) |
 | OpenWeatherMap API key | [openweathermap.org/api](https://openweathermap.org/api) — free tier |
 | OpenTripMap API key | [opentripmap.org](https://opentripmap.org) — free tier |
 | VoyageAI API key | [voyageai.com](https://www.voyageai.com) — free tier |
 
-### Step 1 — Clone and Install
+### Step 1 — Extract the zip
+
+Extract the zip file. You should see a folder named `travel-assistant` containing `server/`, `client/`, `transcripts/`, and this README.
+
+### Step 2 — Install dependencies
+
+Open a terminal inside the `travel-assistant` folder and run:
 
 ```bash
-git clone <repo-url>
-cd travel-assistant
-
 # Install server dependencies
 cd server && npm install
 
@@ -194,39 +197,38 @@ cd server && npm install
 cd ../client && npm install
 ```
 
-### Step 2 — Configure Environment
+### Step 3 — Configure environment
 
-Create `server/.env`:
+The server needs API keys to connect to live data sources. Create a file named `.env` inside the `server/` folder with the following content:
 
 ```env
-# Required
 ANTHROPIC_API_KEY=sk-ant-...
 OPENWEATHER_API_KEY=your_key_here
 OPENTRIPMAP_API_KEY=your_key_here
 VOYAGEAI_API_KEY=your_key_here
-
-# Model (Haiku = fast/cheap, Sonnet = higher quality)
 CLAUDE_MODEL=claude-haiku-4-5-20251001
-
-# Server port (optional, default 3001)
 PORT=3001
 ```
 
-### Step 3 — Run
+Replace each `your_key_here` with your actual API key. All keys are available on free tiers — no payment required.
 
-Open two terminals:
+### Step 4 — Run
+
+You need two terminal windows open at the same time:
 
 ```bash
-# Terminal 1 — Start server
+# Terminal 1 — start the server (from the travel-assistant folder)
 cd server && npm run dev
 
-# Terminal 2 — Start client
+# Terminal 2 — start the client (from the travel-assistant folder)
 cd client && npm run dev
 ```
 
-Open **[http://localhost:5173](http://localhost:5173)**
+Once both are running, open your browser and go to:
 
-> The RAG knowledge base (`server/data/kb.jsonl`) is pre-built and included — no rebuild needed.
+**[http://localhost:5173](http://localhost:5173)**
+
+> The RAG knowledge base (`server/data/kb.jsonl`) is pre-built and included in the zip — no additional setup needed.
 
 ### Step 4 — Try It
 
