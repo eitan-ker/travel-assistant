@@ -2,16 +2,19 @@ const SERVER_URL = 'http://localhost:3001';
 
 export interface SupervisorLog {
   name: string;
-  verdict: 'PASS' | 'REFINED' | 'SKIPPED';
+  verdict: 'PASS' | 'REFINED' | 'SKIPPED' | 'CLARIFY';
 }
 
 export interface UserContext {
+  destination?: string;
   origin?: string;
+  passport?: string;
   interests?: string[];
   budget?: string;
   travelStyle?: string;
   tripDuration?: string;
   travelGroup?: string;
+  travelerConstraints?: string;
   notes?: string;
 }
 
@@ -22,6 +25,7 @@ export interface ChatResponse {
   toolsUsed: string[];
   supervisors: SupervisorLog[];
   userContext?: UserContext;
+  isClarification?: boolean;
 }
 
 export async function sendMessage(message: string, sessionId: string): Promise<ChatResponse> {

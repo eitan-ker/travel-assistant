@@ -201,6 +201,17 @@ body {
   border: 1px solid #4a1a1a;
 }
 
+.message.clarification .bubble {
+  background: #1a1f2e;
+  border: 1px solid #3a4a7a;
+  color: #aab4d4;
+}
+
+.message.clarification .bubble::before {
+  content: '⚠ ';
+  color: #6b9fd4;
+}
+
 /* Message meta (sources + supervisors) */
 .message-meta {
   display: flex;
@@ -218,6 +229,11 @@ body {
 .bubble h1, .bubble h2, .bubble h3 { font-size: 14px; font-weight: 600; margin: 8px 0 4px; color: #e8eaf0; }
 .bubble code { background: #0d1117; padding: 1px 5px; border-radius: 3px; font-size: 13px; }
 .bubble hr { border: none; border-top: 1px solid #2a2d3e; margin: 8px 0; }
+.bubble cite { font-style: normal; }
+.bubble table { border-collapse: collapse; width: 100%; margin: 8px 0; font-size: 13px; }
+.bubble th, .bubble td { border: 1px solid #2a2d3e; padding: 6px 10px; text-align: left; }
+.bubble th { background: #1a1d2e; color: #aab4d4; font-weight: 600; }
+.bubble tr:nth-child(even) { background: #141720; }
 
 /* Source badges */
 .sources {
@@ -294,6 +310,12 @@ body {
   background: #1a0a2e;
   color: #ea80fc;
   border: 1px solid #aa00ff;
+}
+
+.supervisor-row.clarify .supervisor-verdict {
+  background: #1a2a4a;
+  color: #6b9fd4;
+  border-color: #3a5a8a;
 }
 
 .supervisor-row.skipped .supervisor-name,

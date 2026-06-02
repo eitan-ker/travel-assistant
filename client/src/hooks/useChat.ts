@@ -10,6 +10,7 @@ export interface ChatMessage {
   supervisors?: SupervisorLog[];
   thinkingSeconds?: number;
   error?: boolean;
+  isClarification?: boolean;
 }
 
 const STORAGE_KEY = 'travel_chat';
@@ -52,9 +53,9 @@ export function useChat() {
     const startTime = Date.now();
 
     try {
-      const { reply, sources, toolsUsed, supervisors, userContext: newContext } = await sendMessage(text, sessionId.current);
+      const { reply, sources, toolsUsed, supervisors, userContext: newContext, isClarification } = await sendMessage(text, sessionId.current);
       const thinkingSeconds = Math.round((Date.now() - startTime) / 1000);
-      const assistantMsg: ChatMessage = { id: generateId(), role: 'assistant', content: reply, sources, toolsUsed, supervisors, thinkingSeconds };
+      const assistantMsg: ChatMessage = { id: generateId(), role: 'assistant', content: reply, sources, toolsUsed, supervisors, thinkingSeconds, isClarification };
       if (newContext) setUserContext(newContext);
       console.log('[assistant]', { reply, sources });
       setMessages((prev) => [...prev, assistantMsg]);

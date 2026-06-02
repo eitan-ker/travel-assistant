@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect, KeyboardEvent } from 'react';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
 import { useChat } from './hooks/useChat';
 import './App.css';
 
@@ -42,12 +44,15 @@ export default function App() {
       {hasProfile && (
         <div className="profile-bar">
           <span className="profile-label">Traveler profile:</span>
+          {userContext.destination && <span className="profile-tag">✈ {userContext.destination}</span>}
           {userContext.origin && <span className="profile-tag">from {userContext.origin}</span>}
+          {userContext.passport && <span className="profile-tag">🛂 {userContext.passport}</span>}
           {userContext.tripDuration && <span className="profile-tag">{userContext.tripDuration}</span>}
           {userContext.budget && <span className="profile-tag">{userContext.budget}</span>}
           {userContext.travelGroup && <span className="profile-tag">{userContext.travelGroup}</span>}
           {userContext.interests?.map((i) => <span key={i} className="profile-tag">{i}</span>)}
           {userContext.travelStyle && <span className="profile-tag">{userContext.travelStyle}</span>}
+          {userContext.travelerConstraints && <span className="profile-tag">⚠ {userContext.travelerConstraints}</span>}
         </div>
       )}
 
@@ -70,11 +75,11 @@ export default function App() {
         )}
 
         {messages.map((msg) => (
-          <div key={msg.id} className={`message ${msg.role}${msg.error ? ' error' : ''}`}>
+          <div key={msg.id} className={`message ${msg.role}${msg.error ? ' error' : ''}${msg.isClarification ? ' clarification' : ''}`}>
             <div className="message-body">
               <div className="bubble">
                 {msg.role === 'assistant'
-                  ? <ReactMarkdown>{msg.content}</ReactMarkdown>
+                  ? <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>{msg.content}</ReactMarkdown>
                   : msg.content}
               </div>
               {msg.role === 'assistant' && msg.thinkingSeconds !== undefined && !msg.error && (
