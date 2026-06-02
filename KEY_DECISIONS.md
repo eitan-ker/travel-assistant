@@ -42,7 +42,7 @@ At query time, the search query is embedded and the top-3 most relevant document
 
 ---
 
-## 4. UserContext Agent — Persistent Session Memory
+## 4. UserContext Agent — Persistent Cached Session Memory
 
 Every message triggers a lightweight Claude call that runs in parallel with the Travel Agent (zero latency cost) to extract traveler profile fields: destination, origin, passport, budget, travel style, trip duration, group composition, interests, and constraints.
 
