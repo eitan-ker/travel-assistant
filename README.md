@@ -329,7 +329,7 @@ cd client && npm test
 
 ## Key Design Decisions
 
-See [`Key Decisions`](docs/) for the full record of 50+ architectural decisions made during development — including decisions where the original approach was overridden and why.
+See [`KEY_DECISIONS.md`](KEY_DECISIONS.md) for the full record of architectural decisions — including decisions where the original approach was reconsidered and why.
 
 Highlights:
 - **LLM-driven tool use** replaced a rule-based intent classifier — Claude evaluates context and decides which tools to call
