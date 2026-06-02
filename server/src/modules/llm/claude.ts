@@ -3,6 +3,7 @@ import { DataSource } from '../../shared/enums.js';
 import type { LLMProvider, Message } from './types.js';
 import type { ToolCache } from '../session/types.js';
 import { TRAVEL_TOOLS } from '../tools/index.js';
+import { web_search } from '../tools/definitions/claude/web_search.js';
 import { executeTool } from '../tools/index.js';
 
 export class ClaudeProvider implements LLMProvider {
@@ -39,7 +40,7 @@ export class ClaudeProvider implements LLMProvider {
         ...(disableTools
           ? {}
           : {
-              tools: [...TRAVEL_TOOLS, { type: 'web_search_20250305' as const, name: 'web_search' as const }],
+              tools: [...TRAVEL_TOOLS, web_search],
               tool_choice: { type: 'auto' },
             }),
         messages: anthropicMessages,

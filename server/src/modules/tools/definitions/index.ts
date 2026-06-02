@@ -1,13 +1,24 @@
 import type Anthropic from '@anthropic-ai/sdk';
-import { get_weather } from './get_weather.js';
-import { get_country_info } from './get_country_info.js';
-import { get_attractions } from './get_attractions.js';
-import { get_exchange_rate } from './get_exchange_rate.js';
-import { search_travel_kb } from './search_travel_kb.js';
-import { think_destination_recommendation } from './think_destination_recommendation.js';
-import { think_packing_advice } from './think_packing_advice.js';
-import { think_local_attractions } from './think_local_attractions.js';
-import { think_trip_plan } from './think_trip_plan.js';
+
+// API tools — live external data
+import { get_weather } from './api/get_weather.js';
+import { get_country_info } from './api/get_country_info.js';
+import { get_attractions } from './api/get_attractions.js';
+import { get_exchange_rate } from './api/get_exchange_rate.js';
+
+// Chain of thought — structured reasoning
+import { think_destination_recommendation } from './chain_of_thought/think_destination_recommendation.js';
+import { think_packing_advice } from './chain_of_thought/think_packing_advice.js';
+import { think_local_attractions } from './chain_of_thought/think_local_attractions.js';
+import { think_trip_plan } from './chain_of_thought/think_trip_plan.js';
+
+// RAG — knowledge base search
+import { search_travel_kb } from './rag/search_travel_kb.js';
+
+// Claude server-side — web search
+import { web_search } from './claude/web_search.js';
+
+export { web_search };
 
 export const TRAVEL_TOOLS: Anthropic.Tool[] = [
   get_weather,
