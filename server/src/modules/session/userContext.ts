@@ -4,14 +4,16 @@ import type { UserContext } from './types.js';
 
 const USER_CONTEXT_PROMPT = `Extract any new information from the user's message about themselves or their trip. Only extract what is explicitly stated — do not infer or guess. If nothing new is revealed, do not call the tool.
 
+Critical rule: use the last assistant message to understand what was being asked. If the assistant asked "where are you flying from?" and the user answered with a place name, extract it as origin — NOT destination. If the assistant asked about budget and the user answered with a number, extract it as budget. Always interpret the user's answer in the context of the question that was asked.
+
 Key fields to watch for:
-- destination: any place they mention traveling to or asking about — update if they switch destinations
+- destination: only update if the user is clearly stating a new travel destination — NOT if they are answering a question about origin or home
+- origin: where they are flying from or their home city/country — extract this when they answer "where are you flying from?" or similar
 - passport: their passport nationalities — they may hold multiple passports, always collect all mentioned
 - interests: travel interests or activities mentioned (beach, culture, food, nightlife, hiking, relaxation, etc.)
 - travelStyle: how they travel — solo, couple, family, backpacker, luxury, etc.
 - budget: any budget amount or level mentioned
 - tripDuration: how long the trip is
-- origin: where they are flying from or their home city/country
 - travelerConstraints: accessibility needs, dietary requirements, or any personal travel limitations`;
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -45,7 +47,11 @@ const TOOL: Anthropic.Tool = {
   },
 };
 
-export async function extractUserContext(userMessage: string, existing: UserContext): Promise<UserContext> {
+export async function extractUserContext(userMessage: string, existing: UserContext, lastAssistantMessage?: string): Promise<UserContext> {
+  const contextNote = lastAssistantMessage
+    ? `\nLast assistant question: "${lastAssistantMessage.slice(0, 300)}"\n`
+    : '';
+
   const response = await client.messages.create({
     model: process.env.CLAUDE_MODEL ?? 'claude-haiku-4-5-20251001',
     max_tokens: 256,
@@ -55,7 +61,7 @@ export async function extractUserContext(userMessage: string, existing: UserCont
     messages: [
       {
         role: 'user',
-        content: `User message: "${userMessage}"\n\nExtract any profile information they revealed.`,
+        content: `${contextNote}User message: "${userMessage}"\n\nExtract any profile information they revealed.`,
       },
     ],
   });

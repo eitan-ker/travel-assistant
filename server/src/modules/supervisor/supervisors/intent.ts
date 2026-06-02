@@ -4,17 +4,17 @@ import { Verdict } from '../../../shared/enums.js';
 import { runWithRetry, type SupervisorResult } from '../types.js';
 import { isSupervisorToolInput, parseVerdict } from '../guards.js';
 
-const PREFLIGHT_INTENT_PROMPT = `You are a pre-flight check for a travel assistant. Default verdict is PASS. Only return CLARIFY in very specific cases.
+const PREFLIGHT_INTENT_PROMPT = `You are a pre-flight check for a travel assistant. Your default is PASS. CLARIFY is rare.
 
-CLARIFY only when: the user has written a specific name that refers to two or more equally well-known real-world places, and you genuinely cannot determine which one they mean. The same name must be shared by multiple famous places.
+CLARIFY only when the user has written a name that is equally shared by multiple famous real-world places — and you truly cannot determine which one they mean without asking.
 
-PASS for everything else — including:
-- Unique place names with only one well-known location
-- Users answering questions (origin, budget, duration)
-- Missing context or incomplete information
-- Open-ended travel queries
+PASS always when:
+- The name refers to one clear, real location (even if small or unfamiliar)
+- The user is answering a question the agent asked
+- Context or information is missing but the intent is clear
+- You are unsure — default to PASS
 
-When in doubt, PASS.
+CLARIFY is NOT for: incomplete answers, short responses, ambiguous intent, or unusual place names. Only for genuine name collision between equally famous places.
 
 Call preflight_check with your verdict. You MUST always provide reasoning.`;
 

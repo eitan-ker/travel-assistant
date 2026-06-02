@@ -42,7 +42,8 @@ export async function runPipeline(
   const allSources = new Set<string>();
   const allTools = new Set<string>();
 
-  const userContextPromise = extractUserContext(userMessage, existingContext);
+  const lastAssistantMessage = [...history].reverse().find((m) => m.role === Role.Assistant)?.content;
+  const userContextPromise = extractUserContext(userMessage, existingContext, lastAssistantMessage);
 
   const userContextBlock = formatUserContext(existingContext);
   const cacheBlock = buildCacheContextBlock(toolCache);
@@ -185,8 +186,7 @@ export async function runPipeline(
   // Strip excessive blank lines and whitespace gaps to prevent large gaps in UI rendering
   const cleanedReply = reply
     .replace(/\n{3,}/g, '\n\n')
-    .replace(/(#{1,3}[^\n]+)\n{2,}(\|)/g, '$1\n$2')  // heading immediately before table
-    .replace(/\*\*[^\n]+\*\*\n{2,}(\|)/g, '$&')       // bold heading before table
+    .replace(/\n{2,}(\|)/g, '\n$1')  // collapse any blank lines before table rows
     .trim();
 
   log.pipelineEnd([...allSources]);
