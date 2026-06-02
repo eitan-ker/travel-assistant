@@ -324,18 +324,3 @@ cd server && npm test
 # Client tests (29 tests)
 cd client && npm test
 ```
-
----
-
-## Key Design Decisions
-
-See [`KEY_DECISIONS.md`](KEY_DECISIONS.md) for the full record of architectural decisions — including decisions where the original approach was reconsidered and why.
-
-Highlights:
-- **LLM-driven tool use** replaced a rule-based intent classifier — Claude evaluates context and decides which tools to call
-- **CLARIFY verdict** added as a third supervisor outcome — not just PASS/REFINE, but proactive disambiguation
-- **Pre-flight supervisor** runs before tools fire — prevents wasteful API calls when context is insufficient
-- **Tool cache** tied to session TTL — single source of truth for cache lifetime
-- **History compaction** triggered at 40% of rate limit (80K chars) — prevents rate limit errors on long conversations
-- **Response Supervisor retry uses `disableTools=true`** — prevents web search re-execution that floods input context
-- **UserContext extractor receives last assistant message** — prevents "israeli" (answering "what passport?") from being extracted as `destination`
