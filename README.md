@@ -1,6 +1,6 @@
 # Travel Assistant
 
-A production-grade conversational travel planning assistant built on Claude. Designed to demonstrate state-of-the-art prompt engineering, multi-agent supervision, real-time data augmentation, and intelligent context management — going far beyond a basic LLM wrapper.
+A conversational travel planning assistant built on Claude. Designed to demonstrate state-of-the-art prompt engineering, multi-agent supervision, real-time data augmentation, and intelligent context management — going far beyond a basic LLM wrapper.
 
 ---
 
