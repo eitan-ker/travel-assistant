@@ -1,137 +1,122 @@
-# Key Prompt Engineering & Architecture Decisions
+# Key Engineering Decisions
 
-This document records the most significant decisions made during development — including cases where the original approach was reconsidered and why. Each decision has a clear rationale and trade-offs acknowledged.
-
----
-
-## 1. Claude as the Decision Engine (Not a Rule-Based Router)
-
-**Decision:** Remove the keyword-based intent classifier. Give Claude all tools and let it decide autonomously when to call them.
-
-**Why:** Rule-based routing is rigid — "should I pack an umbrella for Tokyo?" gets classified as `packing` and misses that it also needs live weather. Multi-intent queries are impossible to handle cleanly with rules. Claude evaluates context holistically and decides which tools add value.
-
-**Trade-off:** Less deterministic than rules. Mitigated by the supervisor pipeline which audits tool selection and corrects mistakes.
+This document explains the most significant decisions made in building this system — what was built, why it was built that way, and what problem it solves. Organized by theme.
 
 ---
 
-## 2. Supervisors Use Tool Use for Structured Output (Not Prompt-Based JSON)
+## Prompt Engineering
 
-**Decision:** All supervisor verdicts are returned via Claude's tool_use, not free-form JSON instructions.
+### Schemas as Anti-Hallucination
 
-**Why:** Prompt-based JSON is fragile — Claude can wrap the output in prose, add commentary, or deviate from the format. Tool use forces the model into a schema it cannot escape. A REFINE verdict without reasoning is untrustworthy; the schema enforces that reasoning is always present.
+The chain-of-thought tools (`explore_destination`, `think_packing_advice`, etc.) use structured tool schemas where key output fields are **required**. Claude cannot call the tool without committing to specific values — `destination_1`, `destination_2`, `destination_3` must all be filled before the tool call completes.
 
----
+This is a fundamentally different approach from asking Claude to "recommend 3 destinations" in free-form text. With a schema, vague or hallucinated output fails the schema validation before it reaches the user. The schema is a reasoning guardrail, not just documentation.
 
-## 3. Three-Stage Supervisor Architecture
+The same pattern applies to supervisors — the `reasoning` field is required on every verdict. A REFINE without an explanation of why is untrustworthy. The schema enforces that the model must articulate its reasoning before committing to a verdict.
 
-**Decision:** Three specialist supervisors (pre-flight, data, response), each owning one concern — not a single general reviewer.
+### Tool Descriptions as Decision Prompts
 
-**Why:** A general reviewer needs more context, produces vaguer feedback, and is harder to tune. Separation of concerns applies to prompts as much as to code. Each supervisor is given minimal context for its specific job.
+Each tool has explicit `Call when:` / `Do NOT call when:` instructions in its description. These are not comments — they are the actual decision method for when Claude invokes each tool. Claude reads them and decides autonomously. This replaces a rule-based intent classifier entirely, and handles multi-intent queries naturally ("should I pack an umbrella for Tokyo?" correctly triggers both `think_packing_advice` and `get_weather`).
 
-- **Pre-flight** — does the user have enough context to justify running tools?
-- **Data** — did we fetch the right data for this query?
-- **Response** — is the final response quality acceptable?
+### Chain-of-Thought as Explicit Tool Calls
 
----
+Chain-of-thought reasoning is implemented as Claude tool calls, not hidden system prompt injections. When Claude calls `explore_destination`, the tool schema fields ARE the reasoning steps — budget, interests, travel style → shortlist → top pick. The reasoning is auditable in the logs and visible in the UI as yellow badges. Claude cannot skip steps.
 
-## 4. CLARIFY as a Third Verdict
+### Two-Layer Cache Awareness
 
-**Decision:** Add CLARIFY alongside PASS and REFINE as a supervisor verdict that returns a question to the user and skips all tool execution.
+The tool result cache prevents redundant API calls at the code level. But the cache state is also injected into the system prompt as an `[Already fetched this session]` block. This means Claude is aware of what was already retrieved and won't even suggest re-fetching — behavioral reinforcement on top of the technical enforcement.
 
-**Why:** When a destination is genuinely ambiguous (Paris, France vs. Paris, Texas), REFINE is wrong — retrying with the same ambiguous query produces the same problem. CLARIFY short-circuits the pipeline before any tools fire, asks a targeted question, and saves 12+ API calls.
+### Supervisor Context Isolation
 
-**Design:** The question field is required when CLARIFY is returned — the supervisor must name the specific competing options, never return a generic question.
+Each supervisor receives only the context it needs for its specific job — nothing more. The Data Supervisor gets the raw API result and the user's query. The Response Supervisor gets the final response and recent conversation history. Neither gets the other's context. This prevents contamination and keeps each supervisor focused on one concern.
 
 ---
 
-## 5. Pre-flight Supervisor Runs Before Tools Fire
+## Correctness
 
-**Decision:** Add a dedicated pre-flight check that runs before the Travel Agent and any tool calls.
+### Three-Verdict Supervisor System: PASS / REFINE / CLARIFY
 
-**Why:** The original Intent Supervisor ran post-flight — it reviewed tool selection after tools had already fired. When it triggered REFINE, the Travel Agent re-ran all tools again. On a 3×3 destination query (13 API calls), this doubled the cost. Pre-flight catches insufficient context before any tools run.
+Most systems have two states: good or retry. This system has three:
 
-**Two-step reasoning protocol:**
-1. Did the agent's last message ask a question? If yes → user is answering it → PASS immediately (prevents false ambiguity)
-2. Is there a genuine place-name collision? → CLARIFY with specific options
+- **PASS** — acceptable, move forward
+- **REFINE** — issue detected, retry with specific feedback
+- **CLARIFY** — genuine ambiguity that cannot be resolved by retrying — ask the user
 
----
+CLARIFY is the key insight. When a destination is ambiguous (Paris, France vs. Paris, Texas), retrying the same query produces the same problem. The pipeline short-circuits, returns a targeted question to the user, and zero tools fire. This is the correct behavior — guessing would be worse than asking.
 
-## 6. Tool Result Cache Tied to Session TTL
+### Pre-flight Supervisor with Two-Step Reasoning
 
-**Decision:** Cache successful API call results within the session, keyed by tool name + normalized input. TTL matches the session lifetime (30 minutes).
+The pre-flight supervisor runs before any tools fire, using a strict two-step protocol:
 
-**Why:** A destination recommendation fires 13+ API calls. If the user follows up about the same destinations, all those calls would re-fire. The cache prevents this. One TTL eliminates the need to manage a separate cache expiry.
+1. **Did the agent just ask a question?** If yes, the user is answering it — PASS immediately. This prevents a nationality answer ("Israeli") from being flagged as an ambiguous destination.
+2. **Is there a genuine place-name collision?** Only then — CLARIFY with specific options.
 
-**Normalization:** Cache keys are normalized (`"Bali, Indonesia"` and `"Bali"` hit the same key). Cache content is injected into the system prompt so Claude knows not to re-fetch.
+This ordering matters. Without step 1, the system would CLARIFY on answers to its own questions, which is what was happening before this was added.
 
----
+### UserContext Extractor Receives Last Assistant Message
 
-## 7. History Compaction at 40% of Rate Limit
+The user context extraction call receives the last assistant message alongside the user's message. Without this, "Israeli" gets extracted as `destination: Israel` — overwriting Paris. With it, the extractor knows the agent asked "What's your passport?" and correctly extracts `passport: Israeli`. Every component that interprets user intent should know what was asked in the preceding turn.
 
-**Decision:** When conversation history exceeds 80,000 characters (~20,000 tokens), summarize the entire history into a structured context block before the next request.
+### Negation Filtering in UserContext
 
-**Why:** Long conversations accumulate tool results, web search data, and full responses. Without compaction, later messages hit the API rate limit. Triggering at 40% of the limit gives headroom for the current request's own tool calls.
+If a user says "no constraints" or "none", the extractor could store `travelerConstraints: "none"` — a string that looks like data but means the absence of data. The merge logic explicitly rejects negation values and leaves the field undefined. Small bug, real impact on downstream recommendations.
 
-**Schema:** The summary captures trip goal, user profile, decisions made, conversation summary, and pending questions — enough to continue naturally without the raw history.
+### Response Supervisor Receives Verified Source List
 
----
+The Response Supervisor knows which facts in the response came from live APIs (weather, exchange rates, country data). It won't flag "27°C, 67% humidity" as a hallucination when it knows that came from OpenWeatherMap. Without this, the supervisor would REFINE correct responses for containing specific numbers.
 
-## 8. Response Supervisor Retry Uses `disableTools=true`
+### Supervisor Retry on Empty Reasoning
 
-**Decision:** When the Response Supervisor triggers a REFINE retry, the retry call disables all tools.
-
-**Why:** Without this, the retry re-runs all tools including web search. Web search returns large result blocks that flood the input context, leaving little room for output. Each retry made responses shorter and worse — a degradation spiral. With `disableTools=true`, Claude rewrites using context already in the conversation.
-
----
-
-## 9. UserContext Extractor Receives Last Assistant Message
-
-**Decision:** Pass the last assistant message to the UserContext extraction call alongside the user's message.
-
-**Why:** Without this context, the extractor sees "Israeli" in isolation and may extract it as `destination: Israel` — overwriting the actual destination. When the extractor knows the agent just asked "What's your passport nationality?", it correctly extracts `passport: Israeli` instead.
-
-**Broader principle:** Every component that makes decisions about user intent should know what was asked in the preceding turn, not just what the user said.
+Each supervisor retries up to 3 times specifically when the reasoning field is empty. An empty reasoning field is the failure mode that makes a verdict unsafe to act on — REFINE without explanation is meaningless feedback. After 3 failures, it falls back to PASS. Conservative by design: better to let a response through than to act on an unexplained verdict.
 
 ---
 
-## 10. RAG for Stable Knowledge, Web Search for Live Data
+## Efficiency
 
-**Decision:** Two complementary data sources with different freshness profiles — RAG for stable knowledge, web search for current events.
+### Pre-flight Catches Insufficient Context Before Tools Fire
 
-**Why:** RAG (322 WikiVoyage + Wikipedia docs, VoyageAI embeddings) answers "what is this place like?" — cultural context, local customs, neighborhood character, historical significance. These don't change week-to-week. Web search answers "what's happening right now?" — advisories, current events, entry requirement changes. Running web search for stable facts wastes tokens and latency; using training knowledge for current events risks hallucination.
+The original post-flight Intent Supervisor reviewed tool selection after tools had already fired. On a 3×3 destination query (13 API calls), a REFINE verdict meant re-running everything — 26 API calls for one response. The pre-flight check runs in ~2 seconds and prevents all those calls when context is insufficient.
+
+### Tool Result Cache with Normalized Keys
+
+Successful API results are cached within the session. Cache keys are normalized — `"Bali, Indonesia"` and `"Bali"` hit the same key. On a destination recommendation with follow-up questions about the same destinations, the second request costs zero API calls. The cache TTL matches the session TTL — one expiry to manage, not two.
+
+### Parallel Tool Execution
+
+All tool calls within a single response execute concurrently via `Promise.all`. A 3×3 destination recommendation fires 9 API calls simultaneously instead of sequentially — completing in 1-2 seconds instead of 9+. Tools within the same response are independent, so there's no correctness cost to parallelism.
+
+### History Compaction at 40% of Rate Limit
+
+Long conversations accumulate tool results, web search data, and full responses. Without compaction, later messages hit the API rate limit. The compaction threshold is set at 80,000 characters — 40% of the rate limit — leaving headroom for the current request's own tool calls. The compaction output is a typed schema (trip goal, user profile, decisions, pending questions), not free-form text — guaranteeing the summary always contains exactly what future requests need.
+
+### Response Supervisor Retry Disables Tools
+
+When the Response Supervisor triggers a retry, the retry call passes `disableTools=true`. Without this, the retry re-runs all tools including web search, which returns large result blocks that flood the input context. Each retry would be shorter and worse than the last — a degradation spiral. With `disableTools=true`, Claude rewrites using context already in the conversation.
+
+### Supervisor Token Budgets Kept Small
+
+Each supervisor has a small max_tokens budget (256–512). Supervisors produce verdicts with reasoning — they don't need space for a full travel response. Keeping these small reduces latency and cost across 3 supervisor calls per request. This adds up.
+
+### RAG Built from Summaries, Not Raw Text
+
+During offline build, Claude summarizes each WikiVoyage and Wikipedia article before embedding. Raw Wikipedia contains markup, tables, and formatting noise. Claude-generated summaries are semantically dense — the embedding space represents meaning, not formatting artifacts. Better embeddings mean better retrieval.
+
+### Pre-built Knowledge Base Shipped in the Package
+
+The RAG knowledge base (`kb.jsonl`, 322 documents) is built offline and included. The embedding cost was paid once during development, not at runtime. The evaluator does not need a VoyageAI key to run the system — only to rebuild the KB from scratch, which is not required.
 
 ---
 
-## 11. Parallel Tool Execution via Promise.all
+## Architecture
 
-**Decision:** All tool calls within a single Travel Agent response execute concurrently.
+### Modular Design for Microservice Readiness
 
-**Why:** A 3×3 destination recommendation query fires 9 API calls (weather × 3, country × 3, attractions × 3). Sequential execution would take 9+ seconds. Parallel execution completes in 1-2 seconds (limited by the slowest single call). Tools within the same response are independent — no ordering dependency.
+Code is organized into domain modules (chat, pipeline, supervisor, tools, rag, api, llm, session, compaction) rather than technical layers. Each module exposes only an `index.ts` as its public API — internal files are never imported from outside. When a module needs to become its own service, you wrap its `index.ts` in an HTTP server and swap the import for an HTTP call. Minimal friction.
 
----
+### Schemas and Types Enforced by TypeScript
 
-## 12. Chain-of-Thought Tools as Explicit Tool Calls (Not Hidden Injections)
+All supervisor verdicts, tool execution results, and user context fields are typed with TypeScript interfaces and enums. The `Verdict` enum prevents string typos from causing silent failures. The `UserContext` interface documents every field the system tracks. The `SupervisorLog` type enforces that UI badges always have a valid verdict string.
 
-**Decision:** Chain-of-thought prompts implemented as explicit Claude tools (`explore_destination`, `think_packing_advice`, etc.) rather than hidden system prompt injections.
+### Named Constants for All Thresholds
 
-**Why:** As explicit tools, Claude signals which reasoning mode it's using — visible in logs and UI badges. The reasoning process is auditable. Claude can combine reasoning tools with API tools in the same response. The tool schema IS the chain-of-thought structure — each field is a reasoning step the model must complete before responding.
-
----
-
-## 13. Session UserContext as Shared Memory
-
-**Decision:** Extract traveler profile fields from every message and inject the accumulated profile into every subsequent system prompt.
-
-**Why:** Without this, Claude has no memory of who it's talking to. With it, a user who mentioned "Israeli passport" three messages ago doesn't need to repeat themselves. The profile shapes every recommendation — passport affects visa filtering, origin affects flight advice, constraints affect destination suitability.
-
-**Key detail:** Passport is an array — a traveler may hold multiple nationalities. "None" and negation values are automatically rejected and not stored.
-
----
-
-## 14. Modular Architecture for Microservice Readiness
-
-**Decision:** Organize code into `modules/` with domain boundaries (chat, pipeline, supervisor, tools, rag, api, llm, session, compaction) rather than layer-first folders.
-
-**Why:** Domain-first organization means each module contains everything it needs. When extracting `supervisor` or `rag` to its own microservice, you wrap its `index.ts` in an HTTP server and swap the import for an HTTP call — minimal friction.
-
-**Convention enforced:** Each module exposes only an `index.ts` as its public API. Internal files are never imported directly from outside the module.
+Every threshold in the system (`SESSION_DURATION_MINUTES`, `COMPACTION_THRESHOLD_CHARS`, `MAX_SUPERVISOR_RETRIES`, `KB_SEARCH_TOP_K`, etc.) is a named constant in `shared/constants.ts`. No magic numbers anywhere. If the rate limit changes or the session TTL needs adjusting, there is exactly one place to update it.
