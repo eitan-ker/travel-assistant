@@ -199,18 +199,7 @@ cd ../client && npm install
 
 ### Step 3 — Configure environment
 
-The server needs API keys to connect to live data sources. Create a file named `.env` inside the `server/` folder with the following content:
-
-```env
-ANTHROPIC_API_KEY=sk-ant-...
-OPENWEATHER_API_KEY=your_key_here
-OPENTRIPMAP_API_KEY=your_key_here
-VOYAGEAI_API_KEY=your_key_here
-CLAUDE_MODEL=claude-haiku-4-5-20251001
-PORT=3001
-```
-
-Replace each `your_key_here` with your actual API key. All keys are available on free tiers — no payment required.
+The `.env` file is included in the zip inside the `server/` folder — all API keys are already set. No configuration needed.
 
 ### Step 4 — Run
 
