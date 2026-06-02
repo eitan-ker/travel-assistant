@@ -106,35 +106,35 @@ export async function executeTool(
       source: DataSource.RestCountries,
     };
   } else if (toolName === 'get_attractions') {
-    const city = toolInput.city;
-    const attractions = await getAttractions(city);
+    const location = toolInput.location;
+    const attractions = await getAttractions(location);
 
-    console.log(`[opentripmap] ${attractions.length} results for "${city}"`);
+    console.log(`[opentripmap] ${attractions.length} results for "${location}"`);
 
     if (!attractions.length) {
       console.warn(`[opentripmap] no results — falling back to LLM knowledge`);
       return {
-        content: `No attraction data found for "${city}". Use your general knowledge about things to do there.`,
+        content: `No attraction data found for "${location}". Use your general knowledge about things to do there.`,
         source: '',
       };
     }
 
     const list = attractions.map((a, i) => `${i + 1}. ${a.name} (${a.kinds})`).join('\n');
-    const description = `Attractions fetched for "${city}":\n${list}`;
-    const dataResult = await runDataSupervisor(`attractions in ${city}`, description, DataType.Attractions);
+    const description = `Attractions fetched for "${location}":\n${list}`;
+    const dataResult = await runDataSupervisor(`attractions in ${location}`, description, DataType.Attractions);
 
     console.log(`[data-supervisor] attractions: ${dataResult.verdict}`);
 
     if (dataResult.verdict === Verdict.Refine) {
       console.warn(`[data-supervisor] attractions rejected: ${dataResult.feedback ?? 'no feedback'}`);
       return {
-        content: `Could not get reliable attractions data for "${city}". Use your general knowledge about things to do there.`,
+        content: `Could not get reliable attractions data for "${location}". Use your general knowledge about things to do there.`,
         source: '',
       };
     }
 
     result = {
-      content: `Top attractions in ${city}:\n${list}`,
+      content: `Top attractions in ${location}:\n${list}`,
       source: DataSource.OpenTripMap,
     };
   } else if (toolName === 'get_exchange_rate') {

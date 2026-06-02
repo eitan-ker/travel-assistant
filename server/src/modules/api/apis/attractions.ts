@@ -17,20 +17,20 @@ interface OTMPlace {
   dist: number;
 }
 
-async function getCityCoords(city: string, apiKey: string): Promise<{ lat: number; lon: number }> {
-  const url = `https://api.opentripmap.com/0.1/en/places/geoname?name=${encodeURIComponent(city)}&apikey=${apiKey}`;
+async function getLocationCoords(location: string, apiKey: string): Promise<{ lat: number; lon: number }> {
+  const url = `https://api.opentripmap.com/0.1/en/places/geoname?name=${encodeURIComponent(location)}&apikey=${apiKey}`;
   const res = await fetch(url);
   if (!res.ok) throw new Error(`OpenTripMap geoname error: ${res.status}`);
   const data = (await res.json()) as GeonameResponse;
-  if (!data.lat || !data.lon) throw new Error(`City not found: "${city}"`);
+  if (!data.lat || !data.lon) throw new Error(`Location not found: "${location}"`);
   return { lat: data.lat, lon: data.lon };
 }
 
-export async function getAttractions(city: string, limit = 10): Promise<Attraction[]> {
+export async function getAttractions(location: string, limit = 10): Promise<Attraction[]> {
   const key = process.env.OPENTRIPMAP_API_KEY;
   if (!key) throw new Error('OPENTRIPMAP_API_KEY is not set');
 
-  const { lat, lon } = await getCityCoords(city, key);
+  const { lat, lon } = await getLocationCoords(location, key);
 
   const url =
     `https://api.opentripmap.com/0.1/en/places/radius` +
