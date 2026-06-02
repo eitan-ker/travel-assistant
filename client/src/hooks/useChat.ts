@@ -30,7 +30,10 @@ function loadFromStorage(): { sessionId: string; messages: ChatMessage[] } {
       console.log('[session] expired after 15min — starting fresh');
       localStorage.removeItem(STORAGE_KEY);
     }
-  } catch {}
+  } catch (err) {
+    console.warn('[session] failed to load from storage — starting fresh', err);
+    localStorage.removeItem(STORAGE_KEY);
+  }
   return { sessionId: generateId(), messages: [] };
 }
 

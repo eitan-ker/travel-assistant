@@ -36,7 +36,10 @@ export async function sendMessage(message: string, sessionId: string): Promise<C
   });
 
   if (!response.ok) {
-    const err = await response.json().catch(() => ({ error: 'Unknown error' }));
+    const err = await response.json().catch((e: unknown) => {
+      console.error('[api] failed to parse error response', e);
+      return { error: 'Unknown error' };
+    });
     throw new Error(err.error ?? `Server error ${response.status}`);
   }
 
