@@ -179,11 +179,11 @@ body {
   border-radius: 14px;
   font-size: 15px;
   line-height: 1.6;
-  white-space: pre-wrap;
   word-break: break-word;
 }
 
 .message.user .bubble {
+  white-space: pre-wrap;
   background: #3949ab;
   color: #fff;
   border-bottom-right-radius: 4px;
@@ -225,7 +225,7 @@ body {
 .bubble p:last-child { margin-bottom: 0; }
 .bubble p:empty { display: none; }
 .bubble p:blank { display: none; }
-.bubble ul, .bubble ol { margin: 0 0 1px 14px; }
+.bubble ul, .bubble ol { margin: 0 0 12px 14px; }
 .bubble li { margin-bottom: 0; }
 .bubble li p { margin: 0; }
 .bubble strong { color: #e8eaf0; font-weight: 600; }
