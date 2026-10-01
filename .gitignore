@@ -1,6 +1,12 @@
 node_modules/
 dist/
-.env
-.env.example
 *.local
 .DS_Store
+
+# Secrets — never commit
+.env
+.env.*
+!.env.example
+key_env.txt
+*.pem
+*.key
